@@ -1,0 +1,126 @@
+[build-system]
+requires = ["pdm-pep517"]
+build-backend = "pdm.pep517.api"
+
+[project]
+name = "unearth"
+description = "A utility to fetch and download python packages"
+authors = [
+    {name = "Frost Ming", email = "mianghong@gmail.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+    "packaging>20",
+    "requests>2.25",
+    "requests-cache",
+]
+dynamic = ["version"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha"
+]
+
+[project.urls]
+Repository = "https://github.com/frostming/unearth"
+Homepage = "https://github.com/frostming/unearth"
+
+[project.optional-dependencies]
+keyring = [
+    "keyring",
+]
+
+[project.scripts]
+unearth = "unearth.__main__:cli"
+
+[tool.pdm]
+version = {use_scm = true}
+package-dir = "src"
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "pytest>=6.1",
+]
+test = [
+    "towncrier>=19.2",
+    "parver>=0.3",
+    "flask>=2.1.2",
+    "requests-wsgi-adapter>=0.4.1",
+]
+
+[tool.pdm.scripts]
+release = "python -m tasks.release"
+test = "pytest tests/"
+
+lint = "pre-commit run --all-files"
+
+[tool.black]
+line-length = 88
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | tests/fixtures
+)/
+'''
+
+[tool.towncrier]
+package = "unearth"
+filename = "CHANGELOG.md"
+issue_format = "[#{issue}](https://github.com/frostming/unearth/issues/{issue})"
+directory = "news/"
+start_string = "<!-- insertion marker -->"
+title_format = "[v{version}](https://github.com/frostming/unearth/releases/tag/{version}) ({project_date})"
+template = "news/towncrier_template.md"
+underlines = "-~^"
+
+[[tool.towncrier.type]]
+directory = "feature"
+name = "Features & Improvements"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "bugfix"
+name = "Bug Fixes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "doc"
+name = "Improved Documentation"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "dep"
+name = "Dependencies"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "removal"
+name = "Removals and Deprecations"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "misc"
+name = "Miscellany"
+showcontent = true
+
+[tool.isort]
+profile = "black"
+atomic = true
+skip_glob = ["*/setup.py"]
+filter_files = true
+known_first_party = ["unearth"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+  "ignore::DeprecationWarning"
+]

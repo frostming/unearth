@@ -1,0 +1,18 @@
+# Changes here will be overwritten by Copier
+_commit: 0.3.4
+_src_path: gh:pdm-project/copier-pdm
+author_email: mianghong@gmail.com
+author_fullname: Frost Ming
+author_username: frostming
+build_doc: false
+copyright_date: '2022'
+copyright_holder: Frost Ming
+copyright_holder_email: mianghong@gmail.com
+copyright_license: MIT
+project_description: A utility to fetch and download python packages
+project_name: unearth
+python_package_distribution_name: unearth
+python_package_import_name: unearth
+python_package_requires_python: '>=3.7'
+repository_name: unearth
+repository_namespace: frostming
