@@ -82,7 +82,7 @@ def test_session_auth_warn_agains_wrong_credentials(
     with mock.patch.object(
         MultiDomainBasicAuth,
         "_prompt_for_password",
-        return_value=("test", "wrong", False),
+        return_value=("test", "incorrect", False),
     ):
         session.auth = MultiDomainBasicAuth(prompting=True)
         resp = session.get("https://pypi.org/simple/click")
