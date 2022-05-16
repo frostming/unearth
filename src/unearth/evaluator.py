@@ -81,6 +81,7 @@ class Package:
     link: Link
 
     def as_json(self) -> dict[str, Any]:
+        """Return a JSON-serializable representation of the package."""
         return {
             "name": self.name,
             "version": self.version,

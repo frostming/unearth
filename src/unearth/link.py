@@ -34,8 +34,8 @@ class Link:
 
     url: str
     comes_from: str | None = None
-    yank_reason: str | None = dc.field(default=None, kw_only=True)
-    requires_python: str | None = dc.field(default=None, kw_only=True)
+    yank_reason: str | None = None
+    requires_python: str | None = None
     vcs: str | None = dc.field(init=False, default=None)
 
     def __post_init__(self) -> None:
