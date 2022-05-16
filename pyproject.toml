@@ -40,11 +40,11 @@ package-dir = "src"
 
 [tool.pdm.dev-dependencies]
 dev = [
-    "pytest>=6.1",
-]
-test = [
     "towncrier>=19.2",
     "parver>=0.3",
+]
+test = [
+    "pytest>=6.1",
     "flask>=2.1.2",
     "requests-wsgi-adapter>=0.4.1",
 ]

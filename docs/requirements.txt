@@ -1,0 +1,6 @@
+furo
+sphinx
+myst-parser
+sphinx-copybutton
+sphinx-argparse
+.

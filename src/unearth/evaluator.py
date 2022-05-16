@@ -36,7 +36,14 @@ def parse_version_from_egg_info(egg_info: str, canonical_name: str) -> str | Non
 
 @dc.dataclass
 class TargetPython:
-    """Target Python to get the candidates."""
+    """Target Python to get the candidates.
+
+    Attributes:
+        py_ver: Python version tuple, e.g. ``(3, 9)``.
+        platforms: List of platforms, e.g. ``['linux_x86_64']``.
+        impl: Implementation, e.g. ``'cp'``.
+        abis: List of ABIs, e.g. ``['cp39']``.
+    """
 
     py_ver: tuple[int, ...] | None = None
     abis: list[str] | None = None
@@ -60,6 +67,15 @@ class TargetPython:
 
 @dc.dataclass(frozen=True)
 class Package:
+    """A package instance has a name, version, and link that can be downloaded
+    or unpacked.
+
+    Attributes:
+        name: The name of the package.
+        version: The version of the package, or ``None`` if the requirement is a link.
+        link: The link to the package.
+    """
+
     name: str
     version: str | None
     link: Link

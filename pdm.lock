@@ -339,7 +339,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:1db6196882cb99c30585a2c065fd22f78b353c6c23032f778cedbf430422a2d3"
+content_hash = "sha256:85c50e89d3ad4997aa20c03921e249cab475a402f2eef5f59143a7999bc051de"
 
 [metadata.files]
 "appdirs 1.4.4" = [

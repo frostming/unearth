@@ -38,9 +38,8 @@ def _setup_logger(verbosity: bool) -> None:
     logger.addHandler(handler)
 
 
-def parse_args(argv: list[str]) -> CLIArgs:
+def cli_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog=__package__,
         description="Find and download packages from a PEP 508 requirement string.",
     )
     parser.add_argument(
@@ -110,11 +109,12 @@ def parse_args(argv: list[str]) -> CLIArgs:
         metavar="DIR",
         help="Download the package(s) to DIR.",
     )
-    return cast(CLIArgs, parser.parse_args(argv))
+    return parser
 
 
 def cli(argv: list[str] | None = None) -> None:
-    args = parse_args(argv)
+    parser = cli_parser()
+    args = cast(CLIArgs, parser.parse_args(argv))
     _setup_logger(args.verbose)
     finder = PackageFinder(
         index_urls=args.index_urls or ["https://pypi.org/simple"],

@@ -1,4 +1,3 @@
-import io
 import logging
 from unittest import mock
 
@@ -59,9 +58,13 @@ def test_session_auth_from_source_urls(pypi_auth, session):
 
 
 def test_session_auth_from_prompting(pypi_auth, session, monkeypatch):
-    monkeypatch.setattr("sys.stdin", io.StringIO("test\npassword\n\n"))
-    session.auth = MultiDomainBasicAuth(prompting=True)
-    resp = session.get("https://pypi.org/simple/click")
+    with mock.patch.object(
+        MultiDomainBasicAuth,
+        "_prompt_for_password",
+        return_value=("test", "password", False),
+    ):
+        session.auth = MultiDomainBasicAuth(prompting=True)
+        resp = session.get("https://pypi.org/simple/click")
     assert resp.status_code == 200
     assert any(r.status_code == 401 for r in resp.history)
     # The second attempt should use the cached credentials
@@ -76,9 +79,13 @@ def test_session_auth_warn_agains_wrong_credentials(
     pypi_auth, session, monkeypatch, caplog
 ):
     caplog.set_level(logging.WARNING)
-    monkeypatch.setattr("sys.stdin", io.StringIO("test\nwrong\n\n"))
-    session.auth = MultiDomainBasicAuth(prompting=True)
-    resp = session.get("https://pypi.org/simple/click")
+    with mock.patch.object(
+        MultiDomainBasicAuth,
+        "_prompt_for_password",
+        return_value=("test", "wrong", False),
+    ):
+        session.auth = MultiDomainBasicAuth(prompting=True)
+        resp = session.get("https://pypi.org/simple/click")
     assert resp.status_code == 401
     record = caplog.records[-1]
     assert record.levelname == "WARNING"

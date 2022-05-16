@@ -28,7 +28,16 @@ from unearth.session import PyPISession
 
 @dc.dataclass(frozen=True)
 class BestMatch:
-    """The best match for a package."""
+    """The best match for a package.
+
+    Attributes:
+        candidates (list[Package]): All candidates for the
+            package.
+        applicable_candidates (list[Package]): Candidates
+            that match the requirement.
+        best_candidate (Package): The best candidate
+            for the package.
+    """
 
     candidates: list[Package]
     applicable_candidates: list[Package]
@@ -42,7 +51,8 @@ class PackageFinder:
         index_urls: (Iterable[str]): The urls of the index pages.
         find_links: (Iterable[str]): The urls or paths of the find links.
         trusted_hosts: (Iterable[str]): The trusted hosts.
-        target_python (TargetPython): The links must match the target Python
+        target_python (TargetPython): The links must match
+            the target Python
         ignore_compatibility (bool): Whether to ignore the compatibility check
         prefer_binary (bool): Whether to prefer binary packages even if
             newer sdist pacakges exist.
@@ -90,6 +100,7 @@ class PackageFinder:
             package_name (str): The desired package name
             allow_yanked (bool): Whether to allow yanked candidates.
             hashes (dict[str, list[str]]|None): The hashes to filter on.
+
         Returns:
             Evaluator: The evaluator for the given package name
         """
@@ -168,6 +179,7 @@ class PackageFinder:
             package_name (str): The desired package name
             allow_yanked (bool): Whether to allow yanked candidates.
             hashes (dict[str, list[str]]|None): The hashes to filter on.
+
         Returns:
             Iterable[Package]: The packages with the given name
         """
@@ -195,6 +207,7 @@ class PackageFinder:
             package_name (str): The desired package name
             allow_yanked (bool): Whether to allow yanked candidates.
             hashes (dict[str, list[str]]|None): The hashes to filter on.
+
         Returns:
             list[Package]: The packages list sorted by best match
         """
@@ -219,7 +232,7 @@ class PackageFinder:
 
     def find_matches(
         self,
-        requirement: Requirement,
+        requirement: Requirement | str,
         allow_yanked: bool | None = None,
         allow_prereleases: bool | None = None,
         hashes: dict[str, list[str]] | None = None,
@@ -233,9 +246,12 @@ class PackageFinder:
             allow_prereleases (bool|None): Whether to allow prereleases,
                 or None to infer from the specifier.
             hashes (dict[str, list[str]]|None): The hashes to filter on.
+
         Returns:
             list[Package]: The packages list sorted by best match
         """
+        if isinstance(requirement, str):
+            requirement = Requirement(requirement)
         return sorted(
             self._evaluate_packages(
                 self._find_packages_from_requirement(requirement, allow_yanked, hashes),
@@ -248,7 +264,7 @@ class PackageFinder:
 
     def find_best_match(
         self,
-        requirement: Requirement,
+        requirement: Requirement | str,
         allow_yanked: bool | None = None,
         allow_prereleases: bool | None = None,
         hashes: dict[str, list[str]] = None,
@@ -257,14 +273,17 @@ class PackageFinder:
 
         Args:
             requirement (Requirement): A packaging.requirements.Requirement
-            allow_yanked (bool): Whether to allow yanked candidates,
+            allow_yanked (bool|None): Whether to allow yanked candidates,
                 or None to infer from the specifier.
-            allow_prereleases (bool): Whether to allow prereleases,
+            allow_prereleases (bool|None): Whether to allow prereleases,
                 or None to infer from the specifier.
             hashes (dict[str, list[str]]|None): The hashes to filter on.
+
         Returns:
             BestMatch: The best match
         """
+        if isinstance(requirement, str):
+            requirement = Requirement(requirement)
         candidates = list(
             self._find_packages_from_requirement(requirement, allow_yanked, hashes)
         )
