@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import getpass
 import logging
-from typing import Any, Iterable, cast
+from typing import Any, Iterable, Tuple, cast
 from urllib.parse import urlparse
 
 from requests import Response
@@ -17,7 +17,7 @@ try:
 except ModuleNotFoundError:
     keyring = None  # type: ignore[assignment]
 
-AuthInfo = tuple[str, str]
+AuthInfo = Tuple[str, str]
 logger = logging.getLogger(__package__)
 
 
