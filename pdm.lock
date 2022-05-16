@@ -21,6 +21,11 @@ requires_python = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 summary = "Classes Without Boilerplate"
 
 [[package]]
+name = "cached-property"
+version = "1.5.2"
+summary = "A decorator for caching properties in classes."
+
+[[package]]
 name = "cattrs"
 version = "1.10.0"
 requires_python = ">=3.7,<4.0"
@@ -339,7 +344,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:85c50e89d3ad4997aa20c03921e249cab475a402f2eef5f59143a7999bc051de"
+content_hash = "sha256:747ba9d4a3a211617e489dc2603fb14d72bc78af8a759c0abc39c4cdc697166d"
 
 [metadata.files]
 "appdirs 1.4.4" = [
@@ -357,6 +362,10 @@ content_hash = "sha256:85c50e89d3ad4997aa20c03921e249cab475a402f2eef5f59143a7999
 "attrs 21.4.0" = [
     {file = "attrs-21.4.0-py2.py3-none-any.whl", hash = "sha256:2d27e3784d7a565d36ab851fe94887c5eccd6a463168875832a1be79c82828b4"},
     {file = "attrs-21.4.0.tar.gz", hash = "sha256:626ba8234211db98e869df76230a137c4c40a12d72445c45d5f5b716f076e2fd"},
+]
+"cached-property 1.5.2" = [
+    {file = "cached_property-1.5.2-py2.py3-none-any.whl", hash = "sha256:df4f613cf7ad9a588cc381aaf4a512d26265ecebd5eb9e1ba12f1319eb85a6a0"},
+    {file = "cached-property-1.5.2.tar.gz", hash = "sha256:9fa5755838eecbb2d234c3aa390bd80fbd3ac6b6869109bfc1b499f7bd89a130"},
 ]
 "cattrs 1.10.0" = [
     {file = "cattrs-1.10.0-py3-none-any.whl", hash = "sha256:35dd9063244263e63bd0bd24ea61e3015b00272cead084b2c40d788b0f857c46"},
