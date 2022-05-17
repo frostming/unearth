@@ -9,6 +9,8 @@
 
 A utility to fetch and download python packages
 
+> _NOTICE_ This project is still in its early stage and the API may change before 1.0 release. Downloading packages is not yet implemented.
+
 ## Why this project?
 
 This project exists as the last piece to complete the puzzle of a package manager. The other pieces are:
@@ -19,6 +21,11 @@ This project exists as the last piece to complete the puzzle of a package manage
 - [installer](https://pypi.org/project/installer/) - Installs packages from wheels.
 
 They provide all the low-level functionalities that are needed to resolve and install packages.
+
+## Why not pip?
+
+The core functionality is basically extracted from pip. However, pip is not designed to be used as a library and hence the API is not very stable.
+Unearth serves as a stable replacement for pip's `PackageFinder` API. It will follow the conventions of [Semantic Versioning](https://semver.org/) so that downstream projects can use it to develop their own package finding and downloading.
 
 ## Requirements
 
