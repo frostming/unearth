@@ -1,9 +1,11 @@
 """A package should contain a link to the actual file."""
 from __future__ import annotations
 
+import functools
 import os
 import sys
 import urllib.parse as parse
+from pathlib import Path
 from urllib.request import pathname2url, url2pathname
 
 WINDOWS = sys.platform == "win32"
@@ -120,6 +122,7 @@ def is_archive_file(name: str) -> bool:
     return ext in ARCHIVE_EXTENSIONS
 
 
+@functools.lru_cache(maxsize=128)
 def split_auth_from_url(url: str) -> tuple[tuple[str, str | None] | None, str]:
     """Return a tuple of ((username, password), url_without_auth)"""
     parsed = parse.urlparse(url)
@@ -128,3 +131,23 @@ def split_auth_from_url(url: str) -> tuple[tuple[str, str | None] | None, str]:
         return None, url
     user, _, password = auth.partition(":")
     return (user, password or None), parse.urlunparse(parsed._replace(netloc=host))
+
+
+@functools.lru_cache(maxsize=128)
+def compare_urls(left: str, right: str) -> bool:
+    """
+    Compare two urls, ignoring the ending slash.
+    """
+    return parse.unquote(left).rstrip("/") == parse.unquote(right).rstrip("/")
+
+
+def display_path(path: Path) -> str:
+    """Show the path relative to cwd if possible"""
+    if not path.is_absolute():
+        return str(path)
+    try:
+        relative = path.absolute().relative_to(Path.cwd())
+    except ValueError:
+        return str(path)
+    else:
+        return str(relative)
