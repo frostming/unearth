@@ -15,6 +15,7 @@ api/*
 
 ```{toctree}
 :caption: CLI Reference
+:hidden:
 
 cli_reference
 ```
