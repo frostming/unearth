@@ -119,9 +119,9 @@ class Link:
     def redacted(self) -> str:
         _, has_auth, host = self.parsed.netloc.rpartition("@")
         if not has_auth:
-            return self.normalized
+            return self.url_without_fragment
         netloc = f"***{has_auth}{host}"
-        return self.parsed._replace(netloc=netloc).geturl()
+        return self.parsed._replace(netloc=netloc, fragment="").geturl()
 
     def split_auth(self) -> tuple[tuple[str, str | None] | None, str]:
         """Split the url into ((user, password), host)"""

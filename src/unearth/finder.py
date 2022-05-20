@@ -328,6 +328,8 @@ class PackageFinder:
         if link.is_vcs:
             filename, *_ = filename.rsplit("@", 1)
         dest = Path(dest) / filename
+        if hashes is None and link.hash:
+            hashes = {link.hash_name: [link.hash]}
         file = unpack_link(
             self.session,
             link,

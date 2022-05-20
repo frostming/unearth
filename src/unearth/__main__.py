@@ -138,7 +138,9 @@ def cli(argv: list[str] | None = None) -> None:
             data = match.as_json()
             if args.download is not None:
                 data["local_path"] = finder.download_and_unpack(
-                    match.link, tempdir, args.download
+                    match.link,
+                    tempdir,
+                    args.download,
                 ).as_posix()
             result.append(data)
     if args.link_only:

@@ -25,6 +25,7 @@ from unearth.utils import (
 )
 from unearth.vcs import vcs
 
+READ_CHUNK_SIZE = 8192
 logger = logging.getLogger(__package__)
 
 
@@ -68,7 +69,7 @@ def has_leading_dir(paths: Iterable[str]) -> bool:
     (i.e., everything is in one subdirectory in an archive)"""
     common_prefix = None
     for path in paths:
-        prefix, rest = split_leading_dir(path)
+        prefix, _ = split_leading_dir(path)
         if not prefix:
             return False
         elif common_prefix is None:
@@ -112,7 +113,7 @@ class HashValidator:
 
     def validate_path(self, path: Path) -> None:
         with path.open("rb") as f:
-            for chunk in iter(lambda: f.read(8 * 1024), b""):
+            for chunk in iter(lambda: f.read(READ_CHUNK_SIZE), b""):
                 self.update(chunk)
         self.validate()
 
@@ -182,14 +183,7 @@ def _unzip_archive(filename: Path, location: Path) -> None:
 
 
 def _untar_archive(filename: Path, location: Path) -> None:
-    """
-    Untar the file (with path `filename`) to the destination `location`.
-    All files are written based on system defaults and umask (i.e. permissions
-    are not preserved), except that regular file members with any execute
-    permissions (user, group, or world) have "chmod +x" applied after being
-    written.  Note that for windows, any execute changes using os.chmod are
-    no-ops per the python docs.
-    """
+    """Untar the file (with path `filename`) to the destination `location`."""
     os.makedirs(location, exist_ok=True)
     if filename.lower().endswith(".gz") or filename.lower().endswith(".tgz"):
         mode = "r:gz"
@@ -309,7 +303,7 @@ def unpack_link(
                 raise UnpackError(f"Download failed: {e}") from None
 
             with artifact.open("wb") as f:
-                for chunk in resp.iter_content(chunk_size=8 * 1024):
+                for chunk in resp.iter_content(chunk_size=READ_CHUNK_SIZE):
                     if chunk:
                         validator.update(chunk)
                         f.write(chunk)
