@@ -6,7 +6,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Any
-from urllib.parse import ParseResult, unquote, urlparse, urlunparse
+from urllib.parse import ParseResult, unquote, urlparse
 
 from unearth.utils import (
     add_ssh_scheme_to_git_uri,
@@ -105,7 +105,7 @@ class Link:
     @cached_property
     def url_without_fragment(self) -> str:
         """Return the url without the fragment."""
-        return urlunparse(self.parsed._replace(fragment=""))
+        return self.parsed._replace(fragment="").geturl()
 
     @property
     def subdirectory(self) -> str | None:
@@ -119,9 +119,9 @@ class Link:
     def redacted(self) -> str:
         _, has_auth, host = self.parsed.netloc.rpartition("@")
         if not has_auth:
-            return self.normalized
+            return self.url_without_fragment
         netloc = f"***{has_auth}{host}"
-        return urlunparse(self.parsed._replace(netloc=netloc))
+        return self.parsed._replace(netloc=netloc, fragment="").geturl()
 
     def split_auth(self) -> tuple[tuple[str, str | None] | None, str]:
         """Split the url into ((user, password), host)"""

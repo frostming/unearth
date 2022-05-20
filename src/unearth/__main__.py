@@ -5,6 +5,7 @@ import argparse
 import json
 import logging
 import sys
+import tempfile
 from dataclasses import dataclass
 from typing import cast
 
@@ -124,21 +125,31 @@ def cli(argv: list[str] | None = None) -> None:
         only_binary=args.only_binary or [],
         prefer_binary=args.prefer_binary,
     )
-    results = finder.find_matches(args.requirement)
-    if not results:
-        print("No results found.", file=sys.stderr)
+    matches = finder.find_matches(args.requirement)
+    if not matches:
+        print("No matches are found.", file=sys.stderr)
         sys.exit(1)
     if not args.all:
-        if args.link_only:
-            print(results[0].link.redacted)
-        else:
-            print(json.dumps(results[0].as_json(), indent=2))
+        matches = matches[:1]
+
+    result = []
+    with tempfile.TemporaryDirectory("unearth-download-") as tempdir:
+        for match in matches:
+            data = match.as_json()
+            if args.download is not None:
+                data["local_path"] = finder.download_and_unpack(
+                    match.link,
+                    tempdir,
+                    args.download,
+                ).as_posix()
+            result.append(data)
+    if args.link_only:
+        for item in result:
+            print(item["link"]["url"])
+            if "local_path" in item:
+                print("  ==>", item["local_path"])
     else:
-        if args.link_only:
-            for result in results:
-                print(result.link.redacted)
-        else:
-            print(json.dumps([p.as_json() for p in results], indent=2))
+        print(json.dumps(result[0] if len(result) == 1 else result, indent=2))
 
 
 if __name__ == "__main__":

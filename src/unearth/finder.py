@@ -5,6 +5,7 @@ import atexit
 import dataclasses as dc
 import functools
 import os
+from pathlib import Path
 from typing import Iterable
 from urllib.parse import urljoin
 
@@ -23,6 +24,7 @@ from unearth.evaluator import (
     is_equality_specifier,
 )
 from unearth.link import Link
+from unearth.preparer import unpack_link
 from unearth.session import PyPISession
 
 
@@ -56,6 +58,7 @@ class PackageFinder:
         ignore_compatibility (bool): Whether to ignore the compatibility check
         prefer_binary (bool): Whether to prefer binary packages even if
             newer sdist pacakges exist.
+        download_progress (bool): Whether to show download progress.
     """
 
     def __init__(
@@ -69,6 +72,7 @@ class PackageFinder:
         no_binary: Iterable[str] = (),
         only_binary: Iterable[str] = (),
         prefer_binary: bool = False,
+        download_progress: bool = True,
     ) -> None:
         self.index_urls = list(index_urls)
         self.find_links = list(find_links)
@@ -83,6 +87,7 @@ class PackageFinder:
             )
             atexit.register(session.close)
         self.session = session
+        self.progress_bar = download_progress
 
         self._tag_priorities = {
             tag: i for i, tag in enumerate(self.target_python.supported_tags())
@@ -292,3 +297,45 @@ class PackageFinder:
         )
         best_match = max(applicable_candidates, key=self._sort_key, default=None)
         return BestMatch(candidates, applicable_candidates, best_match)
+
+    def download_and_unpack(
+        self,
+        link: Link,
+        download_dir: str | Path,
+        dest: str | Path,
+        hashes: dict[str, list[str]] | None = None,
+    ) -> Path:
+        """Download and unpack the package at the given link.
+
+        If the link is a remote link, it will be downloaded to a temp directory.
+        Then, if the link is a wheel, it will be simply copied to the destination,
+        otherwise it will be unpacked to the destination. Specially, if the link refers
+        to a local directory, the path will be returned, otherwise the destination file
+        path will be returned. And if the link has a subdirectory fragment, the
+        subdirectory will be returned.
+
+        Args:
+            link (Link): The link to download
+            download_dir (str|Path): The directory to download to
+            dest (str|Path): The destination directory
+            hashes (dict[str, list[str]]|None): The optional hash dict for validation.
+
+        Returns:
+            Path: The path to the installable file or directory.
+        """
+        # Strip the rev part for VCS links
+        filename = link.filename
+        if link.is_vcs:
+            filename, *_ = filename.rsplit("@", 1)
+        dest = Path(dest) / filename
+        if hashes is None and link.hash:
+            hashes = {link.hash_name: [link.hash]}
+        file = unpack_link(
+            self.session,
+            link,
+            Path(download_dir),
+            Path(dest),
+            hashes,
+            progress_bar=self.progress_bar,
+        )
+        return file.joinpath(link.subdirectory) if link.subdirectory else file

@@ -43,7 +43,7 @@ class IndexHTMLParser(HTMLParser):
 def parse_html_page(page: HTMLPage) -> Iterable[Link]:
     parser = IndexHTMLParser()
     parser.feed(page.html)
-    base_url = parser.base_url or page.link.normalized
+    base_url = parser.base_url or page.link.url_without_fragment
     for anchor in parser.anchors:
         href = anchor.get("href")
         if href is None:
