@@ -34,7 +34,7 @@ def test_find_most_matching_wheel(session, target_python, filename):
     finder = PackageFinder(
         session, index_urls=["https://pypi.org/simple"], target_python=target_python
     )
-    assert finder.find_best_match("black").best_candidate.link.filename == filename
+    assert finder.find_best_match("black").best.link.filename == filename
 
 
 def test_find_package_with_format_control(session):
@@ -47,12 +47,9 @@ def test_find_package_with_format_control(session):
         no_binary=["black"],
         only_binary=["first"],
     )
+    assert finder.find_best_match("black").best.link.filename == "black-22.3.0.tar.gz"
     assert (
-        finder.find_best_match("black").best_candidate.link.filename
-        == "black-22.3.0.tar.gz"
-    )
-    assert (
-        finder.find_best_match("first").best_candidate.link.filename
+        finder.find_best_match("first").best.link.filename
         == "first-2.0.1-py2.py3-none-any.whl"
     )
 
@@ -67,7 +64,7 @@ def test_find_package_prefer_binary(session):
         prefer_binary=True,
     )
     assert (
-        finder.find_best_match("first").best_candidate.link.filename
+        finder.find_best_match("first").best.link.filename
         == "first-2.0.1-py2.py3-none-any.whl"
     )
 
@@ -88,7 +85,7 @@ def test_find_package_with_hash_allowance(session):
                     "41d5b64e70507d0c3ca742d68010a76060eea8a3d863e9b5130ab11a4a91aa0e"
                 ]
             },
-        ).best_candidate.link.filename
+        ).best.link.filename
         == "first-2.0.1-py2.py3-none-any.whl"
     )
 

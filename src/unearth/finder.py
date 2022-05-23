@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 import atexit
-import dataclasses as dc
 import functools
 import os
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, NamedTuple
 from urllib.parse import urljoin
 
 from packaging.requirements import Requirement
@@ -28,22 +27,22 @@ from unearth.preparer import unpack_link
 from unearth.session import PyPISession
 
 
-@dc.dataclass(frozen=True)
-class BestMatch:
+class BestMatch(NamedTuple):
     """The best match for a package.
+    This is a named tuple with the following attributes in order:
 
     Attributes:
+        best (Package): The best candidate
+            for the package.
         candidates (list[Package]): All candidates for the
             package.
-        applicable_candidates (list[Package]): Candidates
+        applicable (list[Package]): Candidates
             that match the requirement.
-        best_candidate (Package): The best candidate
-            for the package.
     """
 
+    best: Package | None
+    applicable: list[Package]
     candidates: list[Package]
-    applicable_candidates: list[Package]
-    best_candidate: Package | None
 
 
 class PackageFinder:
@@ -245,7 +244,8 @@ class PackageFinder:
         """Find all packages matching the given requirement, best match first.
 
         Args:
-            requirement (Requirement): A packaging.requirements.Requirement
+            requirement (Requirement|str): A packaging.requirements.Requirement
+                instance or a string to construct it.
             allow_yanked (bool|None): Whether to allow yanked candidates,
                 or None to infer from the specifier.
             allow_prereleases (bool|None): Whether to allow prereleases,
@@ -277,7 +277,8 @@ class PackageFinder:
         """Find the best match for the given requirement.
 
         Args:
-            requirement (Requirement): A packaging.requirements.Requirement
+            requirement (Requirement|str): A packaging.requirements.Requirement
+                instance or a string to construct it.
             allow_yanked (bool|None): Whether to allow yanked candidates,
                 or None to infer from the specifier.
             allow_prereleases (bool|None): Whether to allow prereleases,
@@ -296,7 +297,7 @@ class PackageFinder:
             self._evaluate_packages(candidates, requirement, allow_prereleases)
         )
         best_match = max(applicable_candidates, key=self._sort_key, default=None)
-        return BestMatch(candidates, applicable_candidates, best_match)
+        return BestMatch(best_match, applicable_candidates, candidates)
 
     def download_and_unpack(
         self,

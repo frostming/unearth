@@ -88,6 +88,14 @@ class VersionControl(abc.ABC):
                 logger.debug(result.stdout.rstrip())
             return result
 
+    def _is_local_repository(self, repo: str) -> bool:
+        """
+        posix absolute paths start with os.path.sep,
+        win32 ones start with drive (like c:\\folder)
+        """
+        drive, _ = os.path.splitdrive(repo)
+        return repo.startswith(os.path.sep) or bool(drive)
+
     def get_url_and_rev_options(
         self, link: Link
     ) -> tuple[HiddenText, str | None, list[str | HiddenText]]:
@@ -178,7 +186,7 @@ class VersionControl(abc.ABC):
         return ""
 
     @abc.abstractmethod
-    def get_revision(self, dest: Path, rev: str | None = None) -> str:
+    def get_revision(self, dest: Path) -> str:
         """Get the commit hash of the repository."""
         pass
 

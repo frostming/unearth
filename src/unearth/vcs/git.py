@@ -66,9 +66,9 @@ class Git(VersionControl):
             rev = "HEAD"
         try:
             # try as if the rev is a branch name or HEAD
-            resolved = self.get_revision(dest, f"origin/{rev}")
+            resolved = self._resolve_revision(dest, f"origin/{rev}")
         except UnpackError:
-            resolved = self.get_revision(dest, rev)
+            resolved = self._resolve_revision(dest, rev)
         logger.info("Updating %s to commit %s", display_path(dest), resolved)
         self.run_command(["reset", "--hard", "-q", resolved], cwd=dest)
 
@@ -101,7 +101,7 @@ class Git(VersionControl):
         else:
             return add_ssh_scheme_to_git_uri(url)
 
-    def get_revision(self, dest: Path, rev: str | None = None) -> str:
+    def _resolve_revision(self, dest: Path, rev: str | None) -> str:
         if rev is None:
             rev = "HEAD"
         result = self.run_command(
@@ -111,6 +111,9 @@ class Git(VersionControl):
             log_output=False,
         )
         return result.stdout.strip()
+
+    def get_revision(self, dest: Path) -> str:
+        return self._resolve_revision()
 
     def is_commit_hash_equal(self, dest: Path, rev: str | None) -> bool:
         return rev is not None and self.get_revision(dest) == rev
