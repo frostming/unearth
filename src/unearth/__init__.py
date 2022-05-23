@@ -6,5 +6,6 @@
     :license: MIT
 """
 from unearth.finder import PackageFinder
+from unearth.evaluator import TargetPython
 
-__all__ = ["PackageFinder"]
+__all__ = ["PackageFinder", "TargetPython"]
