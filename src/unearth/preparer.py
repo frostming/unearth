@@ -185,13 +185,14 @@ def _unzip_archive(filename: Path, location: Path) -> None:
 def _untar_archive(filename: Path, location: Path) -> None:
     """Untar the file (with path `filename`) to the destination `location`."""
     os.makedirs(location, exist_ok=True)
-    if filename.lower().endswith(".gz") or filename.lower().endswith(".tgz"):
+    lower_fn = str(filename).lower()
+    if lower_fn.endswith(".gz") or lower_fn.endswith(".tgz"):
         mode = "r:gz"
-    elif filename.lower().endswith(BZ2_EXTENSIONS):
+    elif lower_fn.endswith(BZ2_EXTENSIONS):
         mode = "r:bz2"
-    elif filename.lower().endswith(XZ_EXTENSIONS):
+    elif lower_fn.endswith(XZ_EXTENSIONS):
         mode = "r:xz"
-    elif filename.lower().endswith(".tar"):
+    elif lower_fn.endswith(".tar"):
         mode = "r"
     else:
         logger.warning(
@@ -258,7 +259,7 @@ def unpack_link(
     download_dir: Path,
     location: Path,
     hashes: dict[str, list[str]] | None = None,
-    progress_bar: bool = True,
+    verbosity: int = 0,
 ) -> Path:
     """Unpack link into location.
 
@@ -277,7 +278,7 @@ def unpack_link(
     """
     location.parent.mkdir(parents=True, exist_ok=True)
     if link.is_vcs:
-        backend = vcs.get_backend(link.vcs)
+        backend = vcs.get_backend(link.vcs, verbosity=verbosity)
         backend.fetch(link, location)
         return location
 
@@ -309,8 +310,6 @@ def unpack_link(
                         f.write(chunk)
             validator.validate()
     if link.is_wheel:
-        if artifact != location:
-            return Path(shutil.move(artifact, location))
-        return location
+        return artifact
     unpack_archive(artifact, location)
     return location

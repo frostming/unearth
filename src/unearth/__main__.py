@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -12,6 +13,8 @@ from typing import cast
 from packaging.requirements import Requirement
 
 from unearth.finder import PackageFinder
+from unearth.link import Link
+from unearth.utils import splitext
 
 
 @dataclass(frozen=True)
@@ -31,7 +34,7 @@ class CLIArgs:
 
 def _setup_logger(verbosity: bool) -> None:
     logger = logging.getLogger(__package__)
-    logger.setLevel(logging.DEBUG if verbosity else logging.CRITICAL)
+    logger.setLevel(logging.DEBUG if verbosity else logging.WARNING)
     handler = logging.StreamHandler()
     handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(levelname)s: %(message)s")
@@ -113,6 +116,12 @@ def cli_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def get_dest_for_package(dest: str, link: Link) -> str:
+    filename = link.filename.rsplit("@", 1)[0]
+    fn, _ = splitext(filename)
+    return os.path.join(dest, fn)
+
+
 def cli(argv: list[str] | None = None) -> None:
     parser = cli_parser()
     args = cast(CLIArgs, parser.parse_args(argv))
@@ -124,6 +133,7 @@ def cli(argv: list[str] | None = None) -> None:
         no_binary=args.no_binary or [],
         only_binary=args.only_binary or [],
         prefer_binary=args.prefer_binary,
+        verbosity=int(args.verbose),
     )
     matches = finder.find_matches(args.requirement)
     if not matches:
@@ -137,10 +147,15 @@ def cli(argv: list[str] | None = None) -> None:
         for match in matches:
             data = match.as_json()
             if args.download is not None:
+                download_dir, dest = tempdir, get_dest_for_package(
+                    args.download, match.link
+                )
+                if match.link.is_wheel:
+                    download_dir = args.download
                 data["local_path"] = finder.download_and_unpack(
                     match.link,
-                    tempdir,
-                    args.download,
+                    download_dir,
+                    dest,
                 ).as_posix()
             result.append(data)
     if args.link_only:

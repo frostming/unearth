@@ -57,7 +57,7 @@ class PackageFinder:
         ignore_compatibility (bool): Whether to ignore the compatibility check
         prefer_binary (bool): Whether to prefer binary packages even if
             newer sdist pacakges exist.
-        download_progress (bool): Whether to show download progress.
+        verbosity (int): The verbosity level.
     """
 
     def __init__(
@@ -71,7 +71,7 @@ class PackageFinder:
         no_binary: Iterable[str] = (),
         only_binary: Iterable[str] = (),
         prefer_binary: bool = False,
-        download_progress: bool = True,
+        verbosity: int = 0,
     ) -> None:
         self.index_urls = list(index_urls)
         self.find_links = list(find_links)
@@ -86,7 +86,7 @@ class PackageFinder:
             )
             atexit.register(session.close)
         self.session = session
-        self.progress_bar = download_progress
+        self.verbosity = verbosity
 
         self._tag_priorities = {
             tag: i for i, tag in enumerate(self.target_python.supported_tags())
@@ -308,11 +308,11 @@ class PackageFinder:
     ) -> Path:
         """Download and unpack the package at the given link.
 
-        If the link is a remote link, it will be downloaded to a temp directory.
-        Then, if the link is a wheel, it will be simply copied to the destination,
+        If the link is a remote link, it will be downloaded to the ``download_dir``.
+        Then, if the link is a wheel, the path of the downloaded file will be returned,
         otherwise it will be unpacked to the destination. Specially, if the link refers
-        to a local directory, the path will be returned, otherwise the destination file
-        path will be returned. And if the link has a subdirectory fragment, the
+        to a local directory, the path will be returned directly, otherwise the unpacked
+        source path will be returned. And if the link has a subdirectory fragment, the
         subdirectory will be returned.
 
         Args:
@@ -325,10 +325,6 @@ class PackageFinder:
             Path: The path to the installable file or directory.
         """
         # Strip the rev part for VCS links
-        filename = link.filename
-        if link.is_vcs:
-            filename, *_ = filename.rsplit("@", 1)
-        dest = Path(dest) / filename
         if hashes is None and link.hash:
             hashes = {link.hash_name: [link.hash]}
         file = unpack_link(
@@ -337,6 +333,6 @@ class PackageFinder:
             Path(download_dir),
             Path(dest),
             hashes,
-            progress_bar=self.progress_bar,
+            verbosity=self.verbosity,
         )
         return file.joinpath(link.subdirectory) if link.subdirectory else file

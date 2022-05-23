@@ -113,7 +113,7 @@ class Git(VersionControl):
         return result.stdout.strip()
 
     def get_revision(self, dest: Path) -> str:
-        return self._resolve_revision()
+        return self._resolve_revision(dest, None)
 
     def is_commit_hash_equal(self, dest: Path, rev: str | None) -> bool:
         return rev is not None and self.get_revision(dest) == rev

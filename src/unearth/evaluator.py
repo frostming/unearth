@@ -33,6 +33,10 @@ def parse_version_from_egg_info(egg_info: str, canonical_name: str) -> str | Non
     return None
 
 
+class LinkMismatchError(ValueError):
+    pass
+
+
 @dc.dataclass
 class TargetPython:
     """Target Python to get the candidates.
@@ -77,7 +81,7 @@ class Package:
 
     name: str
     version: str | None
-    link: Link
+    link: Link = dc.field(repr=False)
 
     def as_json(self) -> dict[str, Any]:
         """Return a JSON-serializable representation of the package."""
@@ -99,16 +103,14 @@ class FormatControl:
                 "Not allowed to set only_binary and no_binary at the same time."
             )
 
-    def is_allowed(self, link: Link, project_name: str) -> bool:
+    def check_format(self, link: Link, project_name: str) -> None:
         if self.only_binary:
             if not link.is_wheel:
-                logger.debug("Only binaries are allowed for %s", project_name)
-            return link.is_wheel
+                raise LinkMismatchError(f"only binaries are allowed for {project_name}")
         if self.no_binary:
             if link.is_wheel:
-                logger.debug("No binary is allowed for %s", project_name)
-            return not link.is_wheel
-        return True
+                raise LinkMismatchError(f"no binary is allowed for {project_name}")
+        return
 
 
 @dc.dataclass
@@ -134,86 +136,81 @@ class Evaluator:
     def __post_init__(self) -> None:
         self._canonical_name = canonicalize_name(self.package_name)
 
-    def _check_yanked(self, link: Link) -> bool:
+    def _check_yanked(self, link: Link) -> None:
         if link.yank_reason is not None and not self.allow_yanked:
-            logger.debug("%s is yanked", link.redacted)
-            return False
-        return True
+            yank_reason = f"due to {link.yank_reason}" if link.yank_reason else ""
+            raise LinkMismatchError(f"Yanked {yank_reason}")
 
-    def _check_requires_python(self, link: Link) -> bool:
+    def _check_requires_python(self, link: Link) -> None:
         if not self.ignore_compatibility and link.requires_python:
             py_ver = self.target_python.py_ver or sys.version_info[:2]
             py_version = ".".join(str(v) for v in py_ver)
             if not SpecifierSet(link.requires_python).contains(py_version, True):
-                logger.debug(
-                    "The target python version(%s) doesn't match "
-                    "the requires-python specifier %s",
-                    py_version,
-                    link.requires_python,
+                raise LinkMismatchError(
+                    "The target python version({}) doesn't match "
+                    "the requires-python specifier {}".format(
+                        py_version, link.requires_python
+                    ),
                 )
-                return False
-        return True
 
-    def _check_hashes(self, link: Link) -> bool:
+    def _check_hashes(self, link: Link) -> None:
         if not self.hashes or not link.hash_name:
-            return True
+            return
         given_hash = link.hash
         allowed_hashes = self.hashes.get(link.hash_name, [])
         if given_hash not in allowed_hashes:
-            logger.debug(
-                "Hash mismatch: expected: %s, got: %s:%s",
-                allowed_hashes,
-                link.hash_name,
-                given_hash,
+            raise LinkMismatchError(
+                "Hash mismatch: expected: {}, got: {}:{}".format(
+                    allowed_hashes, link.hash_name, given_hash
+                ),
             )
-            return False
-        return True
 
     def evaluate_link(self, link: Link) -> Package | None:
         """
         Evaluate the link and return the package if it matches or None if it doesn't.
         """
-        if not self.format_control.is_allowed(link, self.package_name):
-            return None
-        if not self._check_yanked(link):
-            return None
-        if not self._check_requires_python(link):
-            return None
-        version: str | None = None
-        if link.is_wheel:
-            try:
-                wheel_info = parse_wheel_filename(link.filename)
-            except InvalidWheelFilename as e:
-                logger.debug(str(e))
-                return None
-            if self._canonical_name != wheel_info[0]:
-                logger.debug("The package name doesn't match %s", wheel_info[0])
-                return None
-            if not self.ignore_compatibility and wheel_info[3].isdisjoint(
-                self.target_python.supported_tags()
-            ):
-                logger.debug(
-                    "none of the wheel tags(%s) are compatible",
-                    ", ".join(sorted(str(tag) for tag in wheel_info[3])),
-                )
-                return None
-            version = str(wheel_info[1])
-        else:
-            if link._fragment_dict.get("egg"):
-                egg_info = strip_extras(link._fragment_dict["egg"])
+        try:
+            self.format_control.check_format(link, self.package_name)
+            self._check_yanked(link)
+            self._check_requires_python(link)
+            version: str | None = None
+            if link.is_wheel:
+                try:
+                    wheel_info = parse_wheel_filename(link.filename)
+                except InvalidWheelFilename as e:
+                    raise LinkMismatchError(str(e))
+                if self._canonical_name != wheel_info[0]:
+                    raise LinkMismatchError(
+                        f"The package name doesn't match {wheel_info[0]}"
+                    )
+                if not self.ignore_compatibility and wheel_info[3].isdisjoint(
+                    self.target_python.supported_tags()
+                ):
+                    raise LinkMismatchError(
+                        "none of the wheel tags({}) are compatible".format(
+                            ", ".join(sorted(str(tag) for tag in wheel_info[3]))
+                        ),
+                    )
+                version = str(wheel_info[1])
             else:
-                egg_info, ext = splitext(link.filename)
-                if not ext:
-                    logger.debug("Not a file: %s", link.filename)
-                    return None
-                if ext not in ARCHIVE_EXTENSIONS:
-                    logger.debug("Unsupported archive format: %s", link.filename)
-                    return None
-            version = parse_version_from_egg_info(egg_info, self._canonical_name)
-            if version is None:
-                logger.debug("Missing version in the filename %s", egg_info)
-                return None
-        if not self._check_hashes(link):
+                if link._fragment_dict.get("egg"):
+                    egg_info = strip_extras(link._fragment_dict["egg"])
+                else:
+                    egg_info, ext = splitext(link.filename)
+                    if not ext:
+                        raise LinkMismatchError(f"Not a file: {link.filename}")
+                    if ext not in ARCHIVE_EXTENSIONS:
+                        raise LinkMismatchError(
+                            f"Unsupported archive format: {link.filename}"
+                        )
+                version = parse_version_from_egg_info(egg_info, self._canonical_name)
+                if version is None:
+                    raise LinkMismatchError(
+                        f"Missing version in the filename {egg_info}"
+                    )
+            self._check_hashes(link)
+        except LinkMismatchError as e:
+            logger.debug("Skip link %s: %s", link, e)
             return None
         return Package(name=self.package_name, version=version, link=link)
 
@@ -233,10 +230,19 @@ def evaluate_package(
     """
     if requirement.name:
         if canonicalize_name(package.name) != canonicalize_name(requirement.name):
+            logger.debug(
+                "Skip package %s: name doesn't match %s", package, requirement.name
+            )
             return False
 
     if requirement.specifier and package.version:
-        return requirement.specifier.contains(
+        if not requirement.specifier.contains(
             package.version, prereleases=allow_prereleases
-        )
+        ):
+            logger.debug(
+                "Skip package %s: version doesn't match %s",
+                package,
+                requirement.specifier,
+            )
+            return False
     return True

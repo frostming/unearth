@@ -31,25 +31,27 @@ def test_no_binary_and_only_binary_conflict():
 @pytest.mark.parametrize("link", BINARY_LINKS)
 def test_only_binary_is_allowed(link):
     format_control = FormatControl(only_binary=True, no_binary=False)
-    assert format_control.is_allowed(link, "foo")
+    format_control.check_format(link, "foo")
 
     format_control = FormatControl(only_binary=False, no_binary=True)
-    assert not format_control.is_allowed(link, "foo")
+    with pytest.raises(ValueError):
+        format_control.check_format(link, "foo")
 
 
 @pytest.mark.parametrize("link", SOURCE_LINKS)
 def test_no_binary_is_allowed(link):
     format_control = FormatControl(only_binary=True, no_binary=False)
-    assert not format_control.is_allowed(link, "foo")
+    with pytest.raises(ValueError):
+        format_control.check_format(link, "foo")
 
     format_control = FormatControl(only_binary=False, no_binary=True)
-    assert format_control.is_allowed(link, "foo")
+    format_control.check_format(link, "foo")
 
 
 @pytest.mark.parametrize("link", BINARY_LINKS + SOURCE_LINKS)
 def test_default_format_control_allow_all(link):
     format_control = FormatControl()
-    assert format_control.is_allowed(link, "foo")
+    format_control.check_format(link, "foo")
 
 
 @pytest.mark.parametrize("allow_yanked", (True, False))

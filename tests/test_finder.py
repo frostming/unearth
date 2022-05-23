@@ -54,6 +54,19 @@ def test_find_package_with_format_control(session):
     )
 
 
+def test_find_package_no_binary_for_all(session):
+    finder = PackageFinder(
+        session,
+        index_urls=["https://pypi.org/simple"],
+        target_python=TargetPython(
+            (3, 9), abis=["cp39"], impl="cp", platforms=["win_amd64"]
+        ),
+        no_binary=[":all:"],
+    )
+    assert finder.find_best_match("black").best.link.filename == "black-22.3.0.tar.gz"
+    assert finder.find_best_match("first").best.link.filename == "first-2.0.2.tar.gz"
+
+
 def test_find_package_prefer_binary(session):
     finder = PackageFinder(
         session,
