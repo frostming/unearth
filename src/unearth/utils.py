@@ -118,7 +118,7 @@ ARCHIVE_EXTENSIONS = ZIP_EXTENSIONS + BZ2_EXTENSIONS + TAR_EXTENSIONS + XZ_EXTEN
 
 def is_archive_file(name: str) -> bool:
     """Return True if `name` is a considered as an archive file."""
-    ext = os.path.splitext(name)[1].lower()
+    ext = splitext(name)[1].lower()
     return ext in ARCHIVE_EXTENSIONS
 
 
@@ -151,3 +151,12 @@ def display_path(path: Path) -> str:
         return str(path)
     else:
         return str(relative)
+
+
+def splitext(path: str) -> tuple[str, str]:
+    """Like os.path.splitext but also takes off the .tar part"""
+    base, ext = os.path.splitext(path)
+    if base.lower().endswith(".tar"):
+        ext = base[-4:] + ext
+        base = base[:-4]
+    return base, ext

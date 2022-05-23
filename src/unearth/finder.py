@@ -166,7 +166,7 @@ class PackageFinder:
                 prefer_binary = True
         return (
             -int(link.is_yanked),
-            -int(prefer_binary),
+            int(prefer_binary),
             parse_version(package.version) if package.version is not None else 0,
             -pri,
             build_tag,

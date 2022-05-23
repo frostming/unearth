@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import dataclasses as dc
 import logging
-import os
 import sys
 from typing import Any
 
@@ -18,7 +17,7 @@ from packaging.utils import (
 
 from unearth.link import Link
 from unearth.pep425tags import get_supported
-from unearth.utils import strip_extras
+from unearth.utils import ARCHIVE_EXTENSIONS, splitext, strip_extras
 
 logger = logging.getLogger(__package__)
 
@@ -203,7 +202,13 @@ class Evaluator:
             if link._fragment_dict.get("egg"):
                 egg_info = strip_extras(link._fragment_dict["egg"])
             else:
-                egg_info = os.path.splitext(link.filename)[0]
+                egg_info, ext = splitext(link.filename)
+                if not ext:
+                    logger.debug("Not a file: %s", link.filename)
+                    return None
+                if ext not in ARCHIVE_EXTENSIONS:
+                    logger.debug("Unsupported archive format: %s", link.filename)
+                    return None
             version = parse_version_from_egg_info(egg_info, self._canonical_name)
             if version is None:
                 logger.debug("Missing version in the filename %s", egg_info)
