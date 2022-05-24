@@ -122,15 +122,25 @@ def is_archive_file(name: str) -> bool:
     return ext in ARCHIVE_EXTENSIONS
 
 
+def split_auth_from_netloc(netloc: str) -> tuple[tuple[str, str | None] | None, str]:
+    auth, has_auth, host = netloc.rpartition("@")
+    if not has_auth:
+        return None, host
+    user, _, password = auth.partition(":")
+    return (
+        parse.unquote(user),
+        parse.unquote(password) if password is not None else None,
+    ), host
+
+
 @functools.lru_cache(maxsize=128)
 def split_auth_from_url(url: str) -> tuple[tuple[str, str | None] | None, str]:
     """Return a tuple of ((username, password), url_without_auth)"""
     parsed = parse.urlparse(url)
-    auth, has_auth, host = parsed.netloc.rpartition("@")
-    if not has_auth:
+    auth, netloc = split_auth_from_netloc(parsed.netloc)
+    if auth is None:
         return None, url
-    user, _, password = auth.partition(":")
-    return (user, password or None), parse.urlunparse(parsed._replace(netloc=host))
+    return auth, parse.urlunparse(parsed._replace(netloc=netloc))
 
 
 @functools.lru_cache(maxsize=128)
