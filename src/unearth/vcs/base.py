@@ -101,7 +101,8 @@ class VersionControl(abc.ABC):
     ) -> tuple[HiddenText, str | None, list[str | HiddenText]]:
         """Get the URL and revision options from the link."""
         parsed = link.parsed
-        netloc, user, password = self.get_netloc_and_auth(parsed.netloc)
+        scheme = parsed.scheme.rsplit("+", 1)[-1]
+        netloc, user, password = self.get_netloc_and_auth(parsed.netloc, scheme)
         if password is not None:
             password = HiddenText(password, "***")
         replace_dict = {
@@ -209,8 +210,8 @@ class VersionControl(abc.ABC):
         return dest.joinpath(self.dir_name).exists()
 
     def get_netloc_and_auth(
-        self, netloc: str
-    ) -> tuple[str, str | None, HiddenText | None]:
+        self, netloc: str, scheme: str
+    ) -> tuple[str, str | None, str | None]:
         """Get the auth info and the URL from the link.
         For VCS like git, the auth info must stay in the URL.
         """

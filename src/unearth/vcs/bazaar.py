@@ -21,12 +21,7 @@ class Bazaar(VersionControl):
         self, dest: Path, url: HiddenText, rev: str | None, args: list[str | HiddenText]
     ) -> None:
         rev_display = f" (revision: {rev})" if rev else ""
-        logger.info(
-            "Checking out %s%s to %s",
-            url,
-            rev_display,
-            display_path(dest),
-        )
+        logger.info("Checking out %s%s to %s", url, rev_display, display_path(dest))
         if self.verbosity <= 0:
             flag = "--quiet"
         elif self.verbosity == 1:
