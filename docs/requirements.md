@@ -1,9 +1,9 @@
 # Requirement Specifications
 
 
-The methods `unearth.finder.PackageFinder.find_matches` and `unearth.finder.PackageFinder.find_best_match` accepts a requirements specification string or an instance of `packaging.requirements.Requirement` as the first argument.
+The methods `unearth.finder.PackageFinder.find_matches` and `unearth.finder.PackageFinder.find_best_match` accept a requirements specification string or an instance of `packaging.requirements.Requirement` as the first argument.
 
-The requirement string follows the specification of [PEP 508](https://www.python.org/dev/peps/pep-0508/):
+The requirement string follows the specification of [PEP 508](https://www.python.org/dev/peps/pep-0508/). Here are some examples:
 
 
 ## Named requirements

@@ -5,9 +5,16 @@
 :end-before: <!--index end-->
 ```
 
+## Read More
+
+```{toctree}
+:caption: Requirement Specification
+
+requirements
+```
+
 ```{toctree}
 :caption: API reference
-:hidden:
 :glob:
 
 api/*
@@ -15,7 +22,6 @@ api/*
 
 ```{toctree}
 :caption: CLI Reference
-:hidden:
 
 cli_reference
 ```
