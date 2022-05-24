@@ -26,6 +26,9 @@ def is_installable_dir(path: Path) -> None:
 
 @vcs.register
 class Subversion(VersionControl):
+    name = "svn"
+    dir_name = ".svn"
+
     def get_netloc_and_auth(
         self, netloc: str, scheme: str
     ) -> tuple[str, str | None, str | None]:
