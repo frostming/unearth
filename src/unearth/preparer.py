@@ -310,9 +310,14 @@ def unpack_link(
                         f.write(chunk)
             validator.validate()
     if link.is_wheel:
+        if link.is_file:
+            # Use the local file directly
+            return artifact
         target_file = location / link.filename
         if target_file != artifact:
+            # For wheels downloaded from remote locations, move it to the destination.
             os.replace(artifact, target_file)
         return target_file
+
     unpack_archive(artifact, location)
     return location
