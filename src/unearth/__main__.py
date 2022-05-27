@@ -154,8 +154,8 @@ def cli(argv: list[str] | None = None) -> None:
                     download_dir = args.download
                 data["local_path"] = finder.download_and_unpack(
                     match.link,
-                    download_dir,
                     dest,
+                    download_dir,
                 ).as_posix()
             result.append(data)
     if args.link_only:

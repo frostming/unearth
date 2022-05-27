@@ -4,12 +4,12 @@ import logging
 from pathlib import Path
 
 from unearth.utils import display_path, path_to_url
-from unearth.vcs.base import HiddenText, VersionControl, vcs
+from unearth.vcs.base import HiddenText, VersionControl, vcs_support
 
 logger = logging.getLogger(__package__.split(".")[0])
 
 
-@vcs.register
+@vcs_support.register
 class Mercurial(VersionControl):
     name = "hg"
     dir_name = ".hg"

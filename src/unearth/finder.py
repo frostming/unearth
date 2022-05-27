@@ -5,6 +5,7 @@ import atexit
 import functools
 import os
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Iterable, NamedTuple, cast
 from urllib.parse import urljoin
 
@@ -301,14 +302,14 @@ class PackageFinder:
     def download_and_unpack(
         self,
         link: Link,
-        download_dir: str | Path,
-        dest: str | Path,
+        location: str | Path,
+        download_dir: str | Path | None = None,
         hashes: dict[str, list[str]] | None = None,
     ) -> Path:
         """Download and unpack the package at the given link.
 
         If the link is a remote link, it will be downloaded to the ``download_dir``.
-        Then, if the link is a wheel, the path of the downloaded file will be returned,
+        Then, if the link is a wheel, the path of wheel file will be returned,
         otherwise it will be unpacked to the destination. Specially, if the link refers
         to a local directory, the path will be returned directly, otherwise the unpacked
         source path will be returned. And if the link has a subdirectory fragment, the
@@ -316,8 +317,9 @@ class PackageFinder:
 
         Args:
             link (Link): The link to download
-            download_dir (str|Path): The directory to download to
-            dest (str|Path): The destination directory
+            location (str|Path): The destination directory
+            download_dir (str|Path|None): The directory to download to, or None to use a
+                temporary directory created by unearth.
             hashes (dict[str, list[str]]|None): The optional hash dict for validation.
 
         Returns:
@@ -326,11 +328,13 @@ class PackageFinder:
         # Strip the rev part for VCS links
         if hashes is None and link.hash_name:
             hashes = {link.hash_name: [cast(str, link.hash)]}
+        if download_dir is None:
+            download_dir = TemporaryDirectory(prefix="unearth-download-")
         file = unpack_link(
             self.session,
             link,
             Path(download_dir),
-            Path(dest),
+            Path(location),
             hashes,
             verbosity=self.verbosity,
         )

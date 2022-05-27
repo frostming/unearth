@@ -23,7 +23,7 @@ from unearth.utils import (
     ZIP_EXTENSIONS,
     display_path,
 )
-from unearth.vcs import vcs
+from unearth.vcs import vcs_support
 
 READ_CHUNK_SIZE = 8192
 logger = logging.getLogger(__package__)
@@ -278,7 +278,7 @@ def unpack_link(
     """
     location.parent.mkdir(parents=True, exist_ok=True)
     if link.is_vcs:
-        backend = vcs.get_backend(cast(str, link.vcs), verbosity=verbosity)
+        backend = vcs_support.get_backend(cast(str, link.vcs), verbosity=verbosity)
         backend.fetch(link, location)
         return location
 
@@ -310,6 +310,9 @@ def unpack_link(
                         f.write(chunk)
             validator.validate()
     if link.is_wheel:
-        return artifact
+        target_file = location / link.filename
+        if target_file != artifact:
+            os.replace(artifact, target_file)
+        return target_file
     unpack_archive(artifact, location)
     return location

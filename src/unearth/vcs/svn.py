@@ -7,7 +7,7 @@ from pathlib import Path
 
 from unearth.errors import UnpackError
 from unearth.utils import display_path, split_auth_from_netloc
-from unearth.vcs.base import HiddenText, VersionControl, vcs
+from unearth.vcs.base import HiddenText, VersionControl, vcs_support
 
 logger = logging.getLogger(__package__.split(".")[0])
 
@@ -24,7 +24,7 @@ def is_installable_dir(path: Path) -> bool:
     return False
 
 
-@vcs.register
+@vcs_support.register
 class Subversion(VersionControl):
     name = "svn"
     dir_name = ".svn"
