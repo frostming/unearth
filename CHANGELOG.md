@@ -1,6 +1,13 @@
 # Changelog
 
 <!-- insertion marker -->
+## [v0.3.1](https://github.com/frostming/unearth/releases/tag/0.3.1) (2022-05-27)
+
+### Bug Fixes
+
+- Fix a bug that local source wheels are moved to the destination. [#6](https://github.com/frostming/unearth/issues/6)
+
+
 ## [v0.3.0](https://github.com/frostming/unearth/releases/tag/0.3.0) (2022-05-27)
 
 ### Features & Improvements
