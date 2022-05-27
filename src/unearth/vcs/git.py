@@ -32,7 +32,7 @@ class Git(VersionControl):
         rev_display = f" (revision: {rev})" if rev else ""
         logger.info("Cloning %s%s to %s", url, rev_display, display_path(dest))
         if self.verbosity <= 0:
-            flags = ("--quiet",)
+            flags: tuple[str, ...] = ("--quiet",)
         elif self.verbosity == 1:
             flags = ()
         else:

@@ -138,6 +138,8 @@ class Link:
     @property
     def hash(self) -> str | None:
         """The hash value associated with the URL"""
+        if not self.hash_name:
+            return None
         return self._fragment_dict.get(self.hash_name)
 
     @property

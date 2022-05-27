@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-import email
+import email.utils
 import io
 import ipaddress
 import logging
 import mimetypes
 import os
-from datetime import timedelta
-from typing import Any, Iterable
+from typing import Any, Iterable, cast
 
 import urllib3
 from requests import Session
 from requests.adapters import BaseAdapter, HTTPAdapter
 from requests.models import PreparedRequest, Response
-from requests_cache import CacheMixin
 
 from unearth.auth import MultiDomainBasicAuth
 from unearth.link import Link
@@ -22,8 +20,6 @@ from unearth.utils import build_url_from_netloc, parse_netloc
 logger = logging.getLogger(__package__)
 
 DEFAULT_MAX_RETRIES = 5
-DEFAULT_CACHE_EXPIRE = timedelta(days=7)
-
 DEFAULT_SECURE_ORIGINS = [
     ("https", "*", "*"),
     ("wss", "*", "*"),
@@ -49,11 +45,11 @@ class InsecureHTTPAdapter(InsecureMixin, HTTPAdapter):
 
 class LocalFSAdapter(BaseAdapter):
     def send(self, request: PreparedRequest, *args: Any, **kwargs: Any) -> Response:
-        link = Link(request.url)
+        link = Link(cast(str, request.url))
         path = link.file_path
         resp = Response()
         resp.status_code = 200
-        resp.url = request.url
+        resp.url = cast(str, request.url)
         resp.request = request
 
         try:
@@ -70,13 +66,13 @@ class LocalFSAdapter(BaseAdapter):
             resp.headers.update(
                 {
                     "Content-Type": content_type,
-                    "Content-Length": stats.st_size,
+                    "Content-Length": str(stats.st_size),
                     "Last-Modified": modified,
                 }
             )
 
             resp.raw = open(path, "rb")
-            resp.close = resp.raw.close
+            resp.close = resp.raw.close  # type: ignore
 
         return resp
 
@@ -84,36 +80,33 @@ class LocalFSAdapter(BaseAdapter):
         pass
 
 
-class PyPISession(CacheMixin, Session):
+class PyPISession(Session):
     """
     A session with caching enabled and specific hosts trusted.
+
+    Attributes:
+        secure_adapter_cls (type): The adapter class to use for secure
+            connections.
+        insecure_adapter_cls (type): The adapter class to use for insecure
+            connections.
 
     Args:
         index_urls: The PyPI index URLs to use.
         retries: The number of retries to attempt.
-        use_cache_dir: Whether to use the cache directory.
-        expire_after: The amount of time to cache responses.
-        cache_control: Whether to use the cache-control header.
         trusted_hosts: The hosts to trust.
     """
+
+    secure_adapter_cls = HTTPAdapter
+    insecure_adapter_cls = InsecureHTTPAdapter
 
     def __init__(
         self,
         *,
         index_urls: Iterable[str] = (),
         retries: int = DEFAULT_MAX_RETRIES,
-        use_cache_dir: bool = True,
-        expire_after: timedelta = DEFAULT_CACHE_EXPIRE,
-        cache_control: bool = True,
         trusted_hosts: Iterable[str] = (),
-        **kwargs: Any,
     ) -> None:
-        super().__init__(
-            use_cache_dir=use_cache_dir,
-            expire_after=expire_after,
-            cache_control=cache_control,
-            **kwargs,
-        )
+        super().__init__()
 
         retry = urllib3.Retry(
             total=retries,
@@ -122,10 +115,15 @@ class PyPISession(CacheMixin, Session):
             status_forcelist=[500, 503, 520, 527],
             backoff_factor=0.25,
         )
-        self._insecure_adapter = InsecureHTTPAdapter(max_retries=retry)
+        self._insecure_adapter = self.insecure_adapter_cls(max_retries=retry)
+        secure_adapter = self.secure_adapter_cls(max_retries=retry)
+
+        self.mount("https://", secure_adapter)
+        self.mount("http://", self._insecure_adapter)
+        self.mount("file://", LocalFSAdapter())
+
         self._trusted_host_ports: set[tuple[str, int | None]] = set()
 
-        self.mount("file://", LocalFSAdapter())
         for host in trusted_hosts:
             self.add_trusted_host(host)
         self.auth = MultiDomainBasicAuth(index_urls=index_urls)
@@ -144,7 +142,7 @@ class PyPISession(CacheMixin, Session):
     def iter_secure_origins(self) -> Iterable[tuple[str, str, str]]:
         yield from DEFAULT_SECURE_ORIGINS
         for host, port in self._trusted_host_ports:
-            yield ("*", host, port or "*")
+            yield ("*", host, "*" if port is None else str(port))
 
     def is_secure_origin(self, location: Link) -> bool:
         """
@@ -154,7 +152,7 @@ class PyPISession(CacheMixin, Session):
             location (Link): The location to check.
         """
         _, _, scheme = location.parsed.scheme.rpartition("+")
-        host, port = location.parsed.hostname, location.parsed.port
+        host, port = location.parsed.hostname or "", location.parsed.port
         for secure_scheme, secure_host, secure_port in self.iter_secure_origins():
             if not _compare_origin_part(secure_scheme, scheme):
                 continue
@@ -169,7 +167,9 @@ class PyPISession(CacheMixin, Session):
                 if addr not in network:
                     continue
 
-            if not _compare_origin_part(secure_port, port or "*"):
+            if not _compare_origin_part(
+                secure_port, "*" if port is None else str(port)
+            ):
                 continue
             # We've got here, so all the parts match
             return True

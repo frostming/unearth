@@ -13,7 +13,7 @@ from requests.utils import get_netrc_auth
 from unearth.utils import split_auth_from_url
 
 try:
-    import keyring
+    import keyring  # type: ignore
 except ModuleNotFoundError:
     keyring = None  # type: ignore[assignment]
 
@@ -60,7 +60,7 @@ class MultiDomainBasicAuth(AuthBase):
         self.index_urls = list(index_urls)
 
         self._cached_passwords: dict[str, AuthInfo] = {}
-        self._credentials_to_save: tuple[str, str] | None = None
+        self._credentials_to_save: tuple[str, str, str] | None = None
 
     def _get_index_url(self, url: str) -> str | None:
         """Return the original index URL matching the requested URL.
@@ -173,7 +173,7 @@ class MultiDomainBasicAuth(AuthBase):
 
     def __call__(self, req: PreparedRequest) -> PreparedRequest:
         # Get credentials for this request
-        url, username, password = self._get_url_and_credentials(req.url)
+        url, username, password = self._get_url_and_credentials(cast(str, req.url))
         req.url = url
 
         if username is not None and password is not None:
@@ -211,7 +211,7 @@ class MultiDomainBasicAuth(AuthBase):
         if not self.prompting:
             return resp
 
-        parsed = urlparse(resp.url)
+        parsed = urlparse(cast(str, resp.url))
 
         # Query the keyring for credentials:
         username, password = self._get_new_credentials(
@@ -241,7 +241,8 @@ class MultiDomainBasicAuth(AuthBase):
 
         # Add our new username and password to the request
         req = HTTPBasicAuth(username or "", password or "")(resp.request)
-        req.deregister_hook("response", self.handle_401)
+        # We add new hooks on the fly, since the req is the same as resp.request
+        # The hook will be picked up by the next iteration of `dispatch_hooks()`
         req.register_hook("response", self.warn_on_401)
 
         # On successful request, save the credentials that were used to
@@ -251,7 +252,7 @@ class MultiDomainBasicAuth(AuthBase):
             req.register_hook("response", self.save_credentials)
 
         # Send our new request
-        new_resp = resp.connection.send(req, **kwargs)
+        new_resp = resp.connection.send(req, **kwargs)  # type: ignore
         new_resp.history.append(resp)
 
         return new_resp

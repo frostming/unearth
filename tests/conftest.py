@@ -28,11 +28,12 @@ def fixtures_dir():
 @pytest.fixture()
 def pypi():
     wsgi_app = create_app()
-    with mock.patch(
-        "requests.sessions.HTTPAdapter", return_value=WSGIAdapter(wsgi_app)
+    with mock.patch.object(
+        PyPISession, "insecure_adapter_cls", return_value=WSGIAdapter(wsgi_app)
     ):
-        with mock.patch(
-            "unearth.session.InsecureHTTPAdapter",
+        with mock.patch.object(
+            PyPISession,
+            "secure_adapter_cls",
             return_value=InsecureWSGIAdapter(wsgi_app),
         ):
             yield wsgi_app
@@ -59,8 +60,8 @@ def pypi_auth(pypi):
 
 
 @pytest.fixture()
-def session(tmp_path):
-    s = PyPISession(cache_name=(tmp_path / "httpcache").as_posix())
+def session():
+    s = PyPISession()
     try:
         yield s
     finally:

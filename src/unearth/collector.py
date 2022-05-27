@@ -71,7 +71,7 @@ def collect_links_from_location(
         if path.is_dir():
             if expand:
                 for child in path.iterdir():
-                    file_url = path_to_url(child)
+                    file_url = path_to_url(str(child))
                     if _is_html_file(file_url):
                         yield from _collect_links_from_html(session, Link(file_url))
                     else:

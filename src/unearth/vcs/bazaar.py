@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 import logging
 from pathlib import Path
+
 from unearth.errors import UnpackError
 from unearth.link import Link
 from unearth.utils import display_path, path_to_url
-from unearth.vcs.base import HiddenText, vcs, VersionControl
+from unearth.vcs.base import HiddenText, VersionControl, vcs
 
 logger = logging.getLogger(__package__.split(".")[0])
 
@@ -29,7 +31,7 @@ class Bazaar(VersionControl):
         else:
             flag = f"-{'v'*self.verbosity}"
         cmd_args = ["branch", flag, *self.get_rev_args(rev), url, str(dest)]
-        self.run_command(cmd_args)
+        self.run_command(cmd_args)  # type: ignore
 
     def update(self, dest: Path, rev: str | None, args: list[str | HiddenText]) -> None:
         self.run_command(["pull", "-q", *self.get_rev_args(rev)], cwd=dest)
@@ -51,7 +53,7 @@ class Bazaar(VersionControl):
     def get_revision(self, dest: Path) -> str:
         revision = self.run_command(
             ["revno"], log_output=False, stdout_only=True, cwd=dest
-        )
+        ).stdout
         return revision.splitlines()[-1]
 
     def get_url_and_rev_options(

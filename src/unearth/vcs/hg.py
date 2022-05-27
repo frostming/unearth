@@ -20,18 +20,16 @@ class Mercurial(VersionControl):
         rev_display = f" (revision: {rev})" if rev else ""
         logger.info("Cloning hg %s%s to %s", url, rev_display, display_path(dest))
         if self.verbosity <= 0:
-            flags = ("--quiet",)
+            flags: tuple[str, ...] = ("--quiet",)
         elif self.verbosity == 1:
             flags = ()
         elif self.verbosity == 2:
             flags = ("--verbose",)
         else:
             flags = ("--verbose", "--debug")
-        self.run_command("clone", "--noupdate", *flags, url, dest)
+        self.run_command(["clone", "--noupdate", *flags, url, str(dest)])
         self.run_command(
-            "update",
-            *flags,
-            *self.get_rev_args(rev),
+            ["update", *flags, *self.get_rev_args(rev)],
             cwd=dest,
         )
 
@@ -55,7 +53,7 @@ class Mercurial(VersionControl):
             log_output=False,
             stdout_only=True,
             cwd=dest,
-        ).strip()
+        ).stdout.strip()
         if self._is_local_repository(url):
             url = path_to_url(url)
         return url.strip()

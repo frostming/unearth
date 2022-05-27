@@ -10,7 +10,7 @@ import stat
 import tarfile
 import zipfile
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, cast
 
 from requests import HTTPError, Session
 
@@ -44,9 +44,9 @@ def zip_item_is_executable(info: zipfile.ZipInfo) -> bool:
     return bool(mode and stat.S_ISREG(mode) and mode & 0o111)
 
 
-def is_within_directory(directory: str, path: str) -> bool:
+def is_within_directory(directory: str | Path, path: str | Path) -> bool:
     try:
-        Path(path).relative_to(Path(directory))
+        Path(path).relative_to(directory)
     except ValueError:
         return False
     return True
@@ -118,7 +118,7 @@ class HashValidator:
         self.validate()
 
 
-def _check_downloaded(path: Path, hashes: dict[str, list[str]]) -> bool:
+def _check_downloaded(path: Path, hashes: dict[str, list[str]] | None) -> bool:
     """Check if the file has been downloaded."""
     if not path.is_file():
         return False
@@ -278,7 +278,7 @@ def unpack_link(
     """
     location.parent.mkdir(parents=True, exist_ok=True)
     if link.is_vcs:
-        backend = vcs.get_backend(link.vcs, verbosity=verbosity)
+        backend = vcs.get_backend(cast(str, link.vcs), verbosity=verbosity)
         backend.fetch(link, location)
         return location
 

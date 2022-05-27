@@ -31,17 +31,6 @@ def test_session_is_secure_origin(session, url, is_secure):
     assert session.is_secure_origin(Link(url)) == is_secure
 
 
-@mock.patch("flask.render_template_string", return_value="<html>test</html>")
-def test_session_is_cached(renderer, pypi, session):
-    resp = session.get("https://pypi.org/simple")
-    assert resp.text == "<html>test</html>"
-    renderer.assert_called_once()
-
-    resp = session.get("https://pypi.org/simple")
-    assert resp.text == "<html>test</html>"
-    renderer.assert_called_once()
-
-
 def test_session_auth_401_if_no_prompting(pypi_auth, session):
     session.auth = MultiDomainBasicAuth(prompting=False)
     resp = session.get("https://pypi.org/simple")
@@ -67,17 +56,13 @@ def test_session_auth_from_prompting(pypi_auth, session, monkeypatch):
         resp = session.get("https://pypi.org/simple/click")
     assert resp.status_code == 200
     assert any(r.status_code == 401 for r in resp.history)
-    # The second attempt should use the cached credentials
-    # but before that we need to clear the cache
-    session.cache.clear()
+
     resp = session.get("https://pypi.org/simple/click")
     assert resp.status_code == 200
     assert not any(r.status_code == 401 for r in resp.history)
 
 
-def test_session_auth_warn_agains_wrong_credentials(
-    pypi_auth, session, monkeypatch, caplog
-):
+def test_session_auth_warn_agains_wrong_credentials(pypi_auth, session, caplog):
     caplog.set_level(logging.WARNING)
     with mock.patch.object(
         MultiDomainBasicAuth,

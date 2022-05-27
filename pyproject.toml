@@ -14,9 +14,7 @@ requires-python = ">=3.7"
 dependencies = [
     "packaging>20",
     "requests>2.25",
-    "requests-cache",
-    "cached-property>=1.5.2; python_version < \"3.8\"",
-]
+    "cached-property>=1.5.2; python_version < \"3.8\""]
 dynamic = ["version"]
 
 classifiers = [
