@@ -238,4 +238,4 @@ class VcsSupport:
             raise VCSBackendError(name)
 
 
-vcs = VcsSupport()
+vcs_support = VcsSupport()

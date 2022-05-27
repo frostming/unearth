@@ -6,12 +6,12 @@ from pathlib import Path
 from unearth.errors import UnpackError
 from unearth.link import Link
 from unearth.utils import display_path, path_to_url
-from unearth.vcs.base import HiddenText, VersionControl, vcs
+from unearth.vcs.base import HiddenText, VersionControl, vcs_support
 
 logger = logging.getLogger(__package__.split(".")[0])
 
 
-@vcs.register
+@vcs_support.register
 class Bazaar(VersionControl):
     name = "bzr"
     dir_name = ".bzr"

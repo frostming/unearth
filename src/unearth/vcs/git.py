@@ -8,12 +8,12 @@ from pathlib import Path
 from unearth.errors import UnpackError
 from unearth.link import Link
 from unearth.utils import add_ssh_scheme_to_git_uri, display_path, path_to_url
-from unearth.vcs.base import HiddenText, VersionControl, vcs
+from unearth.vcs.base import HiddenText, VersionControl, vcs_support
 
 logger = logging.getLogger(__package__.split(".")[0])
 
 
-@vcs.register
+@vcs_support.register
 class Git(VersionControl):
     name = "git"
     dir_name = ".git"
