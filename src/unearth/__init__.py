@@ -9,6 +9,7 @@ from unearth.errors import HashMismatchError, UnpackError, URLError, VCSBackendE
 from unearth.evaluator import Package, TargetPython
 from unearth.finder import BestMatch, PackageFinder
 from unearth.link import Link
+from unearth.vcs import vcs_support
 
 __all__ = [
     "Link",
@@ -16,6 +17,7 @@ __all__ = [
     "URLError",
     "BestMatch",
     "UnpackError",
+    "vcs_support",
     "TargetPython",
     "PackageFinder",
     "VCSBackendError",

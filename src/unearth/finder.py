@@ -329,7 +329,7 @@ class PackageFinder:
         if hashes is None and link.hash_name:
             hashes = {link.hash_name: [cast(str, link.hash)]}
         if download_dir is None:
-            download_dir = TemporaryDirectory(prefix="unearth-download-")
+            download_dir = TemporaryDirectory(prefix="unearth-download-").name
         file = unpack_link(
             self.session,
             link,

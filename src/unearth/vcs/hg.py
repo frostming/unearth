@@ -15,10 +15,14 @@ class Mercurial(VersionControl):
     dir_name = ".hg"
 
     def fetch_new(
-        self, dest: Path, url: HiddenText, rev: str | None, args: list[str | HiddenText]
+        self,
+        location: Path,
+        url: HiddenText,
+        rev: str | None,
+        args: list[str | HiddenText],
     ) -> None:
         rev_display = f" (revision: {rev})" if rev else ""
-        logger.info("Cloning hg %s%s to %s", url, rev_display, display_path(dest))
+        logger.info("Cloning hg %s%s to %s", url, rev_display, display_path(location))
         if self.verbosity <= 0:
             flags: tuple[str, ...] = ("--quiet",)
         elif self.verbosity == 1:
@@ -27,32 +31,34 @@ class Mercurial(VersionControl):
             flags = ("--verbose",)
         else:
             flags = ("--verbose", "--debug")
-        self.run_command(["clone", "--noupdate", *flags, url, str(dest)])
+        self.run_command(["clone", "--noupdate", *flags, url, str(location)])
         self.run_command(
             ["update", *flags, *self.get_rev_args(rev)],
-            cwd=dest,
+            cwd=location,
         )
 
-    def update(self, dest: Path, rev: str | None, args: list[str | HiddenText]) -> None:
-        self.run_command(["pull", "-q"], cwd=dest)
+    def update(
+        self, location: Path, rev: str | None, args: list[str | HiddenText]
+    ) -> None:
+        self.run_command(["pull", "-q"], cwd=location)
         cmd_args = ["update", "-q", *self.get_rev_args(rev)]
-        self.run_command(cmd_args, cwd=dest)
+        self.run_command(cmd_args, cwd=location)
 
-    def get_revision(self, dest: Path) -> str:
+    def get_revision(self, location: Path) -> str:
         current_revision = self.run_command(
             ["parents", "--template={rev}"],
             log_output=False,
             stdout_only=True,
-            cwd=dest,
+            cwd=location,
         ).stdout.strip()
         return current_revision
 
-    def get_remote_url(self, dest: Path) -> str:
+    def get_remote_url(self, location: Path) -> str:
         url = self.run_command(
             ["showconfig", "paths.default"],
             log_output=False,
             stdout_only=True,
-            cwd=dest,
+            cwd=location,
         ).stdout.strip()
         if self._is_local_repository(url):
             url = path_to_url(url)

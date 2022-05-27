@@ -20,25 +20,31 @@ class Bazaar(VersionControl):
         return ["-r", rev] if rev is not None else []
 
     def fetch_new(
-        self, dest: Path, url: HiddenText, rev: str | None, args: list[str | HiddenText]
+        self,
+        location: Path,
+        url: HiddenText,
+        rev: str | None,
+        args: list[str | HiddenText],
     ) -> None:
         rev_display = f" (revision: {rev})" if rev else ""
-        logger.info("Checking out %s%s to %s", url, rev_display, display_path(dest))
+        logger.info("Checking out %s%s to %s", url, rev_display, display_path(location))
         if self.verbosity <= 0:
             flag = "--quiet"
         elif self.verbosity == 1:
             flag = ""
         else:
             flag = f"-{'v'*self.verbosity}"
-        cmd_args = ["branch", flag, *self.get_rev_args(rev), url, str(dest)]
+        cmd_args = ["branch", flag, *self.get_rev_args(rev), url, str(location)]
         self.run_command(cmd_args)  # type: ignore
 
-    def update(self, dest: Path, rev: str | None, args: list[str | HiddenText]) -> None:
-        self.run_command(["pull", "-q", *self.get_rev_args(rev)], cwd=dest)
+    def update(
+        self, location: Path, rev: str | None, args: list[str | HiddenText]
+    ) -> None:
+        self.run_command(["pull", "-q", *self.get_rev_args(rev)], cwd=location)
 
-    def get_remote_url(self, dest: Path) -> str:
+    def get_remote_url(self, location: Path) -> str:
         urls = self.run_command(
-            ["info"], log_output=False, stdout_only=True, cwd=dest
+            ["info"], log_output=False, stdout_only=True, cwd=location
         ).stdout
         for line in urls.splitlines():
             line = line.strip()
@@ -48,11 +54,11 @@ class Bazaar(VersionControl):
                     if self._is_local_repository(repo):
                         return path_to_url(repo)
                     return repo
-        raise UnpackError(f"Remote not found for {display_path(dest)}")
+        raise UnpackError(f"Remote not found for {display_path(location)}")
 
-    def get_revision(self, dest: Path) -> str:
+    def get_revision(self, location: Path) -> str:
         revision = self.run_command(
-            ["revno"], log_output=False, stdout_only=True, cwd=dest
+            ["revno"], log_output=False, stdout_only=True, cwd=location
         ).stdout
         return revision.splitlines()[-1]
 

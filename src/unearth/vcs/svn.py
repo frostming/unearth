@@ -53,10 +53,14 @@ class Subversion(VersionControl):
         return args
 
     def fetch_new(
-        self, dest: Path, url: HiddenText, rev: str | None, args: list[str | HiddenText]
+        self,
+        location: Path,
+        url: HiddenText,
+        rev: str | None,
+        args: list[str | HiddenText],
     ) -> None:
         rev_display = f" (revision: {rev})" if rev else ""
-        logger.info("Checking out %s%s to %s", url, rev_display, display_path(dest))
+        logger.info("Checking out %s%s to %s", url, rev_display, display_path(location))
         if self.verbosity <= 0:
             flag = "--quiet"
         else:
@@ -67,20 +71,27 @@ class Subversion(VersionControl):
             "--non-interactive",
             *self.get_rev_args(rev),
             url,
-            str(dest),
+            str(location),
         ]
         self.run_command(cmd_args)  # type: ignore
 
-    def update(self, dest: Path, rev: str | None, args: list[str | HiddenText]) -> None:
-        cmd_args = ["update", "--non-interactive", *self.get_rev_args(rev), str(dest)]
+    def update(
+        self, location: Path, rev: str | None, args: list[str | HiddenText]
+    ) -> None:
+        cmd_args = [
+            "update",
+            "--non-interactive",
+            *self.get_rev_args(rev),
+            str(location),
+        ]
         self.run_command(cmd_args)  # type: ignore
 
-    def get_remote_url(self, dest: Path) -> str:
-        orig_location = dest
-        while not is_installable_dir(dest):
-            last_location = dest
-            dest = dest.parent
-            if dest == last_location:
+    def get_remote_url(self, location: Path) -> str:
+        orig_location = location
+        while not is_installable_dir(location):
+            last_location = location
+            location = location.parent
+            if location == last_location:
                 # We've traversed up to the root of the filesystem without
                 # finding a Python project.
                 raise UnpackError(
@@ -88,16 +99,16 @@ class Subversion(VersionControl):
                     "(tried all parent directories)",
                 )
 
-        url, _ = self._get_svn_url_rev(dest)
+        url, _ = self._get_svn_url_rev(location)
         if url is None:
-            raise UnpackError(f"Remote not found for {dest}")
+            raise UnpackError(f"Remote not found for {location}")
 
         return url
 
-    def get_revision(self, dest: Path) -> str:
+    def get_revision(self, location: Path) -> str:
         revision = 0
 
-        for base, dirs, _ in os.walk(dest):
+        for base, dirs, _ in os.walk(location):
             if self.dir_name not in dirs:
                 dirs[:] = []
                 continue  # no sense walking uncontrolled subdirs
@@ -109,7 +120,7 @@ class Subversion(VersionControl):
 
             dirurl, localrev = self._get_svn_url_rev(Path(base))
 
-            if Path(base) == dest:
+            if Path(base) == location:
                 assert dirurl is not None
                 base = dirurl + "/"  # save the root url
             elif not dirurl or not dirurl.startswith(base):

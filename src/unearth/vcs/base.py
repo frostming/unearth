@@ -118,45 +118,49 @@ class VersionControl(abc.ABC):
         hidden_url = HiddenText(url, Link(url).redacted)
         return hidden_url, rev, args
 
-    def fetch(self, link: Link, dest: Path) -> None:
+    def fetch(self, link: Link, location: Path) -> None:
         """Clone the repository to the destination directory, and return
         the path to the local repository.
 
         Args:
             link (Link): the VCS link to the repository
-            dest (Path): the destination directory
+            location (Path): the destination directory
         """
         url, rev, args = self.get_url_and_rev_options(link)
-        if not dest.exists():
-            return self.fetch_new(dest, url, rev, args)
+        if not location.exists():
+            return self.fetch_new(location, url, rev, args)
 
-        if not self.is_repository_dir(dest) or not compare_urls(
-            url.secret, self.get_remote_url(dest)
+        if not self.is_repository_dir(location) or not compare_urls(
+            url.secret, self.get_remote_url(location)
         ):
-            if not self.is_repository_dir(dest):
-                logger.debug(f"{dest} is not a repository directory, removing it.")
+            if not self.is_repository_dir(location):
+                logger.debug(f"{location} is not a repository directory, removing it.")
             else:
-                remote_url = self.get_remote_url(dest)
+                remote_url = self.get_remote_url(location)
                 logger.debug(
-                    f"{dest} is a repository directory, but the remote url "
+                    f"{location} is a repository directory, but the remote url "
                     f"{remote_url!r} does not match the url {url!r}."
                 )
-            shutil.rmtree(dest)
-            return self.fetch_new(dest, url, rev, args)
+            shutil.rmtree(location)
+            return self.fetch_new(location, url, rev, args)
 
-        if self.is_commit_hash_equal(dest, rev):
-            logger.debug("Repository %s is already up-to-date", dest)
+        if self.is_commit_hash_equal(location, rev):
+            logger.debug("Repository %s is already up-to-date", location)
             return
-        self.update(dest, rev, args)
+        self.update(location, rev, args)
 
     @abc.abstractmethod
     def fetch_new(
-        self, dest: Path, url: HiddenText, rev: str | None, args: list[str | HiddenText]
+        self,
+        location: Path,
+        url: HiddenText,
+        rev: str | None,
+        args: list[str | HiddenText],
     ) -> None:
         """Fetch the repository from the remote link, as if it is the first time.
 
         Args:
-            dest (Path): the destination directory
+            location (Path): the repository location
             link (Link): the VCS link to the repository
             rev (str|None): the revision to checkout
             args (list[str | HiddenText]): the arguments to pass to the update command
@@ -164,27 +168,29 @@ class VersionControl(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def update(self, dest: Path, rev: str | None, args: list[str | HiddenText]) -> None:
+    def update(
+        self, location: Path, rev: str | None, args: list[str | HiddenText]
+    ) -> None:
         """Update the repository to the given revision.
 
         Args:
-            dest (Path): the destination directory
+            location (Path): the repository location
             rev (str|None): the revision to checkout
             args (list[str | HiddenText]): the arguments to pass to the update command
         """
         pass
 
     @abc.abstractmethod
-    def get_remote_url(self, dest: Path) -> str:
+    def get_remote_url(self, location: Path) -> str:
         """Get the remote URL of the repository."""
         return ""
 
     @abc.abstractmethod
-    def get_revision(self, dest: Path) -> str:
+    def get_revision(self, location: Path) -> str:
         """Get the commit hash of the repository."""
         pass
 
-    def is_immutable_revision(self, dest: Path, link: Link) -> bool:
+    def is_immutable_revision(self, location: Path, link: Link) -> bool:
         """Check if the revision is immutable.
         Always return False if the backend doesn't support immutable revisions.
         """
@@ -194,13 +200,13 @@ class VersionControl(abc.ABC):
         """Get the revision arguments for the command."""
         return [rev] if rev is not None else []
 
-    def is_commit_hash_equal(self, dest: Path, rev: str | None) -> bool:
+    def is_commit_hash_equal(self, location: Path, rev: str | None) -> bool:
         """Always assume the versions don't match"""
         return False
 
-    def is_repository_dir(self, dest: Path) -> bool:
+    def is_repository_dir(self, location: Path) -> bool:
         """Check if the given directory is a repository directory."""
-        return dest.joinpath(self.dir_name).exists()
+        return location.joinpath(self.dir_name).exists()
 
     def get_netloc_and_auth(
         self, netloc: str, scheme: str
