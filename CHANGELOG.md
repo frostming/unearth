@@ -8,11 +8,11 @@
 - Export more methods and variables in the top package. [#4](https://github.com/frostming/unearth/issues/4)
 - Rename parameter `dest` to `location` in `PackageFinder.download_and_unpack()` and VCS methods. [#5](https://github.com/frostming/unearth/issues/5)
 - `PackageFinder.download_and_unpack` gets a default value for `download_dir`, where a temporary dir will be created for downloading. [#5](https://github.com/frostming/unearth/issues/5)
-  
+
 ### Bug Fixes
 
 - Fix the type annotations across the entire project. [#4](https://github.com/frostming/unearth/issues/4)
-  
+
 ### Removals and Deprecations
 
 - Remove the integration of `requests-cache`, downstream projects need to handle the caches themselves by passing a custom subclass of `PyPISession` to the `PackageFinder`. [#4](https://github.com/frostming/unearth/issues/4)
