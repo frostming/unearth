@@ -13,7 +13,7 @@ WINDOWS = sys.platform == "win32"
 
 def parse_query(query: str) -> dict[str, str]:
     """Parse the query string of a url."""
-    return {k: v[0] if len(v) == 1 else v for k, v in parse.parse_qs(query).items()}
+    return {k: v[0] for k, v in parse.parse_qs(query).items()}
 
 
 def add_ssh_scheme_to_git_uri(uri: str) -> str:
@@ -50,7 +50,7 @@ def parse_netloc(netloc: str) -> tuple[str, int | None]:
     """
     url = build_url_from_netloc(netloc)
     parsed = parse.urlparse(url)
-    return parsed.hostname, parsed.port
+    return parsed.hostname or "", parsed.port
 
 
 def url_to_path(url: str) -> str:

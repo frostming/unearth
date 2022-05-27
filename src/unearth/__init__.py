@@ -5,7 +5,19 @@
     :author: Frost Ming <mianghong@gmail.com>
     :license: MIT
 """
-from unearth.finder import PackageFinder
-from unearth.evaluator import TargetPython
+from unearth.errors import HashMismatchError, UnpackError, URLError, VCSBackendError
+from unearth.evaluator import Package, TargetPython
+from unearth.finder import BestMatch, PackageFinder
+from unearth.link import Link
 
-__all__ = ["PackageFinder", "TargetPython"]
+__all__ = [
+    "Link",
+    "Package",
+    "URLError",
+    "BestMatch",
+    "UnpackError",
+    "TargetPython",
+    "PackageFinder",
+    "VCSBackendError",
+    "HashMismatchError",
+]

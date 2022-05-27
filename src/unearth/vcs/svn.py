@@ -17,7 +17,7 @@ _svn_info_xml_rev_re = re.compile(r'\s*revision="(\d+)"')
 _svn_info_xml_url_re = re.compile(r"<url>(.*)</url>")
 
 
-def is_installable_dir(path: Path) -> None:
+def is_installable_dir(path: Path) -> bool:
     for project_file in ("pyproject.toml", "setup.py"):
         if (path / project_file).exists():
             return True
@@ -67,13 +67,13 @@ class Subversion(VersionControl):
             "--non-interactive",
             *self.get_rev_args(rev),
             url,
-            dest,
+            str(dest),
         ]
-        self.run_command(cmd_args)
+        self.run_command(cmd_args)  # type: ignore
 
     def update(self, dest: Path, rev: str | None, args: list[str | HiddenText]) -> None:
-        cmd_args = ["update", "--non-interactive", *self.get_rev_args(rev), dest]
-        self.run_command(cmd_args)
+        cmd_args = ["update", "--non-interactive", *self.get_rev_args(rev), str(dest)]
+        self.run_command(cmd_args)  # type: ignore
 
     def get_remote_url(self, dest: Path) -> str:
         orig_location = dest
@@ -107,7 +107,7 @@ class Subversion(VersionControl):
                 # FIXME: should we warn?
                 continue
 
-            dirurl, localrev = self._get_svn_url_rev(base)
+            dirurl, localrev = self._get_svn_url_rev(Path(base))
 
             if Path(base) == dest:
                 assert dirurl is not None
@@ -118,7 +118,7 @@ class Subversion(VersionControl):
             revision = max(revision, localrev)
         return str(revision)
 
-    def _get_svn_url_rev(self, location: str) -> tuple[str | None, int]:
+    def _get_svn_url_rev(self, location: Path) -> tuple[str | None, int]:
         entries_path = os.path.join(location, self.dir_name, "entries")
         if os.path.exists(entries_path):
             with open(entries_path) as f:
@@ -147,7 +147,7 @@ class Subversion(VersionControl):
                 # is being used to prompt for passwords, because passwords
                 # are only potentially needed for remote server requests.
                 xml = self.run_command(
-                    ["info", "--xml", location],
+                    ["info", "--xml", str(location)],
                     log_output=False,
                     stdout_only=True,
                 ).stdout

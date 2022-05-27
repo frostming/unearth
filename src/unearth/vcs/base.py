@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import abc
-import dataclasses as dc
 import logging
 import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Collection, Type, TypeVar
+from typing import Collection, Sequence, Type, TypeVar, cast
 
 from unearth.errors import UnpackError, URLError, VCSBackendError
 from unearth.link import Link
@@ -30,12 +29,6 @@ class HiddenText:
         return f"<URL {str(self)!r}>"
 
 
-@dc.dataclass
-class RevOptions:
-    rev: str | None
-    extra_args: list[str] = dc.field(default_factory=list)
-
-
 class VersionControl(abc.ABC):
     """The base class for all version control systems.
 
@@ -53,7 +46,7 @@ class VersionControl(abc.ABC):
 
     def run_command(
         self,
-        cmd: list[str | HiddenText],
+        cmd: Sequence[str | HiddenText],
         cwd: Path | None = None,
         extra_env: dict[str, str] | None = None,
         log_output: bool = True,
@@ -65,7 +58,7 @@ class VersionControl(abc.ABC):
         if extra_env:
             env = dict(os.environ, **extra_env)
         try:
-            cmd = [self.name] + cmd
+            cmd = [self.name] + cmd  # type: ignore
             display_cmd = subprocess.list2cmdline(map(str, cmd))
             logger.debug("Running command %s", display_cmd)
             result = subprocess.run(
@@ -104,11 +97,11 @@ class VersionControl(abc.ABC):
         scheme = parsed.scheme.rsplit("+", 1)[-1]
         netloc, user, password = self.get_netloc_and_auth(parsed.netloc, scheme)
         if password is not None:
-            password = HiddenText(password, "***")
+            password = HiddenText(password, "***")  # type: ignore[assignment]
         replace_dict = {
             "scheme": parsed.scheme.rsplit("+", 1)[-1],
             "netloc": netloc,
-            "fragment": None,
+            "fragment": "",
         }
         if "@" not in parsed.path:
             rev = None
@@ -120,7 +113,7 @@ class VersionControl(abc.ABC):
                     "You should specify a revision or remove the @ from the URL."
                 )
             replace_dict["path"] = path
-        args = self.make_auth_args(user, password)
+        args = self.make_auth_args(user, cast(HiddenText, password))
         url = parsed._replace(**replace_dict).geturl()
         hidden_url = HiddenText(url, Link(url).redacted)
         return hidden_url, rev, args

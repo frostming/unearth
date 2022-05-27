@@ -5,13 +5,12 @@ import atexit
 import functools
 import os
 from pathlib import Path
-from typing import Iterable, NamedTuple
+from typing import Iterable, NamedTuple, cast
 from urllib.parse import urljoin
 
 from packaging.requirements import Requirement
 from packaging.utils import BuildTag, canonicalize_name, parse_wheel_filename
 from packaging.version import parse as parse_version
-from requests.sessions import Session
 
 from unearth.collector import collect_links_from_location
 from unearth.evaluator import (
@@ -62,7 +61,7 @@ class PackageFinder:
 
     def __init__(
         self,
-        session: Session | None = None,
+        session: PyPISession | None = None,
         index_urls: Iterable[str] = (),
         find_links: Iterable[str] = (),
         trusted_hosts: Iterable[str] = (),
@@ -95,7 +94,7 @@ class PackageFinder:
     def build_evaluator(
         self,
         package_name: str,
-        allow_yanked: bool | None = None,
+        allow_yanked: bool = False,
         hashes: dict[str, list[str]] | None = None,
     ) -> Evaluator:
         """Build an evaluator for the given package name.
@@ -325,8 +324,8 @@ class PackageFinder:
             Path: The path to the installable file or directory.
         """
         # Strip the rev part for VCS links
-        if hashes is None and link.hash:
-            hashes = {link.hash_name: [link.hash]}
+        if hashes is None and link.hash_name:
+            hashes = {link.hash_name: [cast(str, link.hash)]}
         file = unpack_link(
             self.session,
             link,

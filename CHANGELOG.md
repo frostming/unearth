@@ -7,5 +7,3 @@
 
 - Implement the logic for downloading a file link to local. [#3](https://github.com/frostming/unearth/issues/3)
 - Support VCS requirements for git, subversion, mercurial and bazaar. [#3](https://github.com/frostming/unearth/issues/3)
-
-
