@@ -1,6 +1,13 @@
 # Changelog
 
 <!-- insertion marker -->
+## [v0.3.2](https://github.com/frostming/unearth/releases/tag/0.3.2) (2022-05-28)
+
+### Bug Fixes
+
+- Add ending slash to the project index URL. [#7](https://github.com/frostming/unearth/issues/7)
+
+
 ## [v0.3.1](https://github.com/frostming/unearth/releases/tag/0.3.1) (2022-05-27)
 
 ### Bug Fixes
