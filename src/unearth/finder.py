@@ -126,7 +126,7 @@ class PackageFinder:
         )
 
     def _build_index_page_link(self, index_url: str, package_name: str) -> Link:
-        return Link(urljoin(index_url.rstrip("/") + "/", package_name))
+        return Link(urljoin(index_url.rstrip("/") + "/", package_name + "/"))
 
     def _build_find_link(self, find_link: str) -> Link:
         if os.path.exists(find_link):
