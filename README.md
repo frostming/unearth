@@ -9,7 +9,7 @@
 
 A utility to fetch and download python packages
 
-> _NOTICE_ This project is still in its early stage and the API may change before 1.0 release. Downloading packages is not yet implemented.
+> _NOTICE_ This project is still in its early stage and the API may change before 1.0 release.
 
 ## Why this project?
 
