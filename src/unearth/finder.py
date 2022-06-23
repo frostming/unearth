@@ -100,8 +100,10 @@ class PackageFinder:
         self._tag_priorities = {
             tag: i for i, tag in enumerate(self.target_python.supported_tags())
         }
-        self._index_order = [split_auth_from_url(url)[1] for url in self.index_urls]
-        self._find_link_order = [split_auth_from_url(url)[1] for url in self.find_links]
+        # Index pages are preferred over find links.
+        self._source_order = [
+            split_auth_from_url(url)[1] for url in (self.index_urls + self.find_links)
+        ]
 
     def build_evaluator(
         self,
@@ -176,30 +178,21 @@ class PackageFinder:
             if self.prefer_binary:
                 prefer_binary = True
         comes_from = package.link.comes_from
-        from_index, index_order = False, len(self._index_order) + len(
-            self._find_link_order
-        )
+        source_index = len(self._source_order)
+
         if comes_from is not None and self.respect_source_order:
-            orders = [
-                i
-                for i, url in enumerate(self._index_order)
-                if comes_from.startswith(url)
-            ]
-            if orders:
-                from_index = True
-            else:
-                orders = [
+            source_index = next(
+                (
                     i
-                    for i, url in enumerate(self._find_link_order)
+                    for i, url in enumerate(self._source_order)
                     if comes_from.startswith(url)
-                ]
-            if orders:
-                index_order = orders[0]
+                ),
+                source_index,
+            )
         return (
             -int(link.is_yanked),
             int(prefer_binary),
-            int(from_index),
-            -index_order,
+            -source_index,
             parse_version(package.version) if package.version is not None else 0,
             -pri,
             build_tag,
