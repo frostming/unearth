@@ -25,6 +25,7 @@ from unearth.evaluator import (
 from unearth.link import Link
 from unearth.preparer import unpack_link
 from unearth.session import PyPISession
+from unearth.utils import split_auth_from_url
 
 
 class BestMatch(NamedTuple):
@@ -49,14 +50,20 @@ class PackageFinder:
     """The main class for the unearth package.
 
     Args:
+        session (PyPISession|None): The session to use for the finder.
+            If not provided, a temporary session will be created.
         index_urls: (Iterable[str]): The urls of the index pages.
         find_links: (Iterable[str]): The urls or paths of the find links.
         trusted_hosts: (Iterable[str]): The trusted hosts.
         target_python (TargetPython): The links must match
             the target Python
         ignore_compatibility (bool): Whether to ignore the compatibility check
+        no_binary (Iterable[str]): The names of the packages to disallow wheels
+        only_binary (Iterable[str]): The names of the packages to disallow non-wheels
         prefer_binary (bool): Whether to prefer binary packages even if
             newer sdist pacakges exist.
+        respect_source_order (bool): If True, packages from the source coming earlier
+            are more preferred, even if they have lower versions.
         verbosity (int): The verbosity level.
     """
 
@@ -71,6 +78,7 @@ class PackageFinder:
         no_binary: Iterable[str] = (),
         only_binary: Iterable[str] = (),
         prefer_binary: bool = False,
+        respect_source_order: bool = False,
         verbosity: int = 0,
     ) -> None:
         self.index_urls = list(index_urls)
@@ -86,11 +94,14 @@ class PackageFinder:
             )
             atexit.register(session.close)
         self.session = session
+        self.respect_source_order = respect_source_order
         self.verbosity = verbosity
 
         self._tag_priorities = {
             tag: i for i, tag in enumerate(self.target_python.supported_tags())
         }
+        self._index_order = [split_auth_from_url(url)[1] for url in self.index_urls]
+        self._find_link_order = [split_auth_from_url(url)[1] for url in self.find_links]
 
     def build_evaluator(
         self,
@@ -152,6 +163,7 @@ class PackageFinder:
         return filter(evaluator, packages)
 
     def _sort_key(self, package: Package) -> tuple:
+        """The key for sort, package with the largest value is the most preferred."""
         link = package.link
         pri = len(self._tag_priorities)
         build_tag: BuildTag = ()
@@ -163,9 +175,31 @@ class PackageFinder:
             )
             if self.prefer_binary:
                 prefer_binary = True
+        comes_from = package.link.comes_from
+        from_index, index_order = False, len(self._index_order) + len(
+            self._find_link_order
+        )
+        if comes_from is not None and self.respect_source_order:
+            orders = [
+                i
+                for i, url in enumerate(self._index_order)
+                if comes_from.startswith(url)
+            ]
+            if orders:
+                from_index = True
+            else:
+                orders = [
+                    i
+                    for i, url in enumerate(self._find_link_order)
+                    if comes_from.startswith(url)
+                ]
+            if orders:
+                index_order = orders[0]
         return (
             -int(link.is_yanked),
             int(prefer_binary),
+            int(from_index),
+            -index_order,
             parse_version(package.version) if package.version is not None else 0,
             -pri,
             build_tag,

@@ -61,6 +61,8 @@ def test_collect_links_from_local_file(pypi, session, fixtures_dir, filename):
     assert [link.filename for link in collected] == [
         "click-8.1.3-py3-none-any.whl",
         "click-8.1.3.tar.gz",
+        "first-2.0.3-py2.py3-none-any.whl",
+        "first-2.0.3.tar.gz",
     ]
 
 
@@ -74,4 +76,6 @@ def test_collect_links_from_local_dir_expand(pypi, session, fixtures_dir):
         "Jinja2-3.1.2-py3-none-any.whl",
         "click-8.1.3-py3-none-any.whl",
         "click-8.1.3.tar.gz",
+        "first-2.0.3-py2.py3-none-any.whl",
+        "first-2.0.3.tar.gz",
     ]

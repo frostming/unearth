@@ -1,5 +1,6 @@
 import pytest
 
+from unearth import Link
 from unearth.evaluator import TargetPython
 from unearth.finder import PackageFinder
 
@@ -160,3 +161,30 @@ def test_find_requirement_with_link(session):
     assert len(matches) == 1
     assert matches[0].name == "first"
     assert matches[0].link.normalized == "https://pypi.org/files/first-2.0.2.tar.gz"
+
+
+def test_find_requirement_preference(session, fixtures_dir):
+    find_link = Link.from_path(fixtures_dir / "findlinks/index.html")
+    finder = PackageFinder(
+        session,
+        index_urls=["https://pypi.org/simple"],
+        find_links=[find_link.normalized],
+        ignore_compatibility=True,
+    )
+    best = finder.find_best_match("first").best
+    assert best.link.filename == "first-2.0.3-py2.py3-none-any.whl"
+    assert best.link.comes_from == find_link.normalized
+
+
+def test_find_requirement_preference_respect_source_order(session, fixtures_dir):
+    find_link = Link.from_path(fixtures_dir / "findlinks/index.html")
+    finder = PackageFinder(
+        session,
+        index_urls=["https://pypi.org/simple"],
+        find_links=[find_link.normalized],
+        ignore_compatibility=True,
+        respect_source_order=True,
+    )
+    best = finder.find_best_match("first").best
+    assert best.link.filename == "first-2.0.2.tar.gz"
+    assert best.link.comes_from == "https://pypi.org/simple/first/"
