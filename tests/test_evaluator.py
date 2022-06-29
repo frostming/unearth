@@ -92,8 +92,15 @@ def test_evaluate_link_python_version(
     )
 
 
-def test_evaluate_invalid_wheel_name():
-    link = Link("https://test.pypi.org/files/click-8.1.3.whl")
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://test.pypi.org/files/click-8.1.3.whl",
+        "https://test.pypi.org/files/click-8.1.3_develop-py3-none-any.whl",
+    ],
+)
+def test_evaluate_invalid_wheel_name(url):
+    link = Link(url)
     evaluator = Evaluator("click")
     assert evaluator.evaluate_link(link) is None
 
