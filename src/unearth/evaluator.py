@@ -14,6 +14,7 @@ from packaging.utils import (
     canonicalize_name,
     parse_wheel_filename,
 )
+from packaging.version import InvalidVersion
 
 from unearth.link import Link
 from unearth.pep425tags import get_supported
@@ -177,7 +178,7 @@ class Evaluator:
             if link.is_wheel:
                 try:
                     wheel_info = parse_wheel_filename(link.filename)
-                except InvalidWheelFilename as e:
+                except (InvalidWheelFilename, InvalidVersion) as e:
                     raise LinkMismatchError(str(e))
                 if self._canonical_name != wheel_info[0]:
                     raise LinkMismatchError(
