@@ -31,6 +31,7 @@ classifiers = [
 [project.urls]
 Repository = "https://github.com/frostming/unearth"
 Homepage = "https://github.com/frostming/unearth"
+Changelog = "https://github.com/frostming/unearth/releases"
 
 [project.optional-dependencies]
 keyring = [
@@ -42,6 +43,8 @@ unearth = "unearth.__main__:cli"
 
 [tool.pdm]
 version = {use_scm = true}
+
+[tool.pdm.build]
 package-dir = "src"
 
 [tool.pdm.dev-dependencies]

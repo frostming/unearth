@@ -11,10 +11,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v3
         with:
-          python-version: '3.10'
+          python-version: "3.10"
+
+      - run: npx changelogithub
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
       - name: Build artifacts
         run: |
           pip install build
@@ -28,3 +34,7 @@ jobs:
         run: |
           pip install twine
           twine upload --username __token__ --password ${{ secrets.PYPI_TOKEN }} dist/*
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
