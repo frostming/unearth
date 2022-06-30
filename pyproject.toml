@@ -42,7 +42,7 @@ keyring = [
 unearth = "unearth.__main__:cli"
 
 [tool.pdm]
-version = {use_scm = true}
+version = {source = "scm"}
 
 [tool.pdm.build]
 package-dir = "src"
