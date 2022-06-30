@@ -12,8 +12,8 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
-    "packaging>20",
-    "requests>2.25",
+    "packaging>=20",
+    "requests>=2.25",
     "cached-property>=1.5.2; python_version < \"3.8\""]
 dynamic = ["version"]
 
@@ -48,10 +48,6 @@ version = {source = "scm"}
 package-dir = "src"
 
 [tool.pdm.dev-dependencies]
-dev = [
-    "towncrier>=19.2",
-    "parver>=0.3",
-]
 test = [
     "pytest>=6.1",
     "flask>=2.1.2",
@@ -59,9 +55,7 @@ test = [
 ]
 
 [tool.pdm.scripts]
-release = "python -m tasks.release"
 test = "pytest tests/"
-
 lint = "pre-commit run --all-files"
 
 [tool.black]
@@ -81,46 +75,6 @@ exclude = '''
   | tests/fixtures
 )/
 '''
-
-[tool.towncrier]
-package = "unearth"
-filename = "CHANGELOG.md"
-issue_format = "[#{issue}](https://github.com/frostming/unearth/issues/{issue})"
-directory = "news/"
-start_string = "<!-- insertion marker -->"
-title_format = "[v{version}](https://github.com/frostming/unearth/releases/tag/{version}) ({project_date})"
-template = "news/towncrier_template.md"
-underlines = "-~^"
-
-[[tool.towncrier.type]]
-directory = "feature"
-name = "Features & Improvements"
-showcontent = true
-
-[[tool.towncrier.type]]
-directory = "bugfix"
-name = "Bug Fixes"
-showcontent = true
-
-[[tool.towncrier.type]]
-directory = "doc"
-name = "Improved Documentation"
-showcontent = true
-
-[[tool.towncrier.type]]
-directory = "dep"
-name = "Dependencies"
-showcontent = true
-
-[[tool.towncrier.type]]
-directory = "removal"
-name = "Removals and Deprecations"
-showcontent = true
-
-[[tool.towncrier.type]]
-directory = "misc"
-name = "Miscellany"
-showcontent = true
 
 [tool.isort]
 profile = "black"

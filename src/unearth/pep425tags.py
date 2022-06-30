@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 from packaging.tags import (
-    PythonVersion,
-    Tag,
     compatible_tags,
     cpython_tags,
     generic_tags,
@@ -14,6 +13,9 @@ from packaging.tags import (
     interpreter_version,
     mac_platforms,
 )
+
+if TYPE_CHECKING:
+    from packaging.tags import PythonVersion, Tag
 
 _osx_arch_pat = re.compile(r"(.+)_(\d+)_(\d+)_(.+)")
 

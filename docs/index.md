@@ -30,8 +30,8 @@ cli_reference
 :caption: Development
 :hidden:
 
-changelog
 contributing
+Changelog <https://github.com/frostming/unearth/releases>
 GitHub <https://github.com/frostming/unearth>
 PyPI <https://pypi.org/project/unearth>
 ```
