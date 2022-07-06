@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import dataclasses as dc
+import hashlib
 import logging
 import sys
-from typing import Any
+from typing import Any, cast
+from urllib.parse import urlencode
 
 from packaging.requirements import Requirement
 from packaging.specifiers import SpecifierSet
@@ -15,6 +17,7 @@ from packaging.utils import (
     parse_wheel_filename,
 )
 from packaging.version import InvalidVersion
+from requests import Session
 
 from unearth.link import Link
 from unearth.pep425tags import get_supported
@@ -128,6 +131,7 @@ class Evaluator:
     """
 
     package_name: str
+    session: Session
     target_python: TargetPython = dc.field(default_factory=TargetPython)
     hashes: dict[str, list[str]] = dc.field(default_factory=dict)
     ignore_compatibility: bool = False
@@ -155,16 +159,43 @@ class Evaluator:
                 )
 
     def _check_hashes(self, link: Link) -> None:
-        if not self.hashes or not link.hash_name:
-            return
-        given_hash = link.hash
-        allowed_hashes = self.hashes.get(link.hash_name, [])
-        if given_hash not in allowed_hashes:
+        def hash_mismatch(
+            hash_name: str, given_hash: str, allowed_hashes: list[str]
+        ) -> None:
             raise LinkMismatchError(
-                "Hash mismatch: expected: {}, got: {}:{}".format(
-                    allowed_hashes, link.hash_name, given_hash
-                ),
+                f"Hash mismatch, expected: {allowed_hashes}\n"
+                f"got: {hash_name}:{given_hash}"
             )
+
+        if not self.hashes:
+            return
+        if link.hash_name and link.hash_name in self.hashes:
+            if link.hash not in self.hashes[link.hash_name]:
+                hash_mismatch(
+                    link.hash_name, cast(str, link.hash), self.hashes[link.hash_name]
+                )
+
+        hash_name, allowed_hashes = next(iter(self.hashes.items()))
+        given_hash = self._get_hash(link, hash_name)
+        if given_hash not in allowed_hashes:
+            hash_mismatch(hash_name, given_hash, allowed_hashes)
+
+    def _get_hash(self, link: Link, hash_name: str) -> str:
+        if link.hash_name == hash_name:
+            return cast(str, link.hash)
+        resp = self.session.get(link.normalized, stream=True)
+        hasher = hashlib.new(hash_name)
+        for chunk in resp.iter_content(chunk_size=1024 * 8):
+            hasher.update(chunk)
+        digest = hasher.hexdigest()
+        # Store the hash on the link for future use
+        fragment_dict = link._fragment_dict
+        fragment_dict.pop(link.hash_name, None)  # type: ignore
+        fragment_dict[hash_name] = digest
+        link.__dict__["parsed"] = link.parsed._replace(
+            fragment=urlencode(fragment_dict)
+        )
+        return digest
 
     def evaluate_link(self, link: Link) -> Package | None:
         """
