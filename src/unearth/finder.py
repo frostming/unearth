@@ -131,6 +131,7 @@ class PackageFinder:
         )
         return Evaluator(
             package_name=package_name,
+            session=self.session,
             target_python=self.target_python,
             ignore_compatibility=self.ignore_compatibility,
             allow_yanked=allow_yanked,
