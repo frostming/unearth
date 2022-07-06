@@ -19,14 +19,6 @@ jobs:
         with:
           python-version: "3.10"
 
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16.x
-
-      - run: npx changelogithub
-        env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-
       - name: Build artifacts
         run: |
           pip install build
@@ -37,6 +29,7 @@ jobs:
           python3 -m venv fresh_env
           . fresh_env/bin/activate
           pip install dist/*.whl
+
       - name: Upload to Pypi
         run: |
           pip install twine
