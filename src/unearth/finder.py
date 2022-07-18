@@ -29,20 +29,13 @@ from unearth.utils import split_auth_from_url
 
 
 class BestMatch(NamedTuple):
-    """The best match for a package.
-    This is a named tuple with the following attributes in order:
+    """The best match for a package."""
 
-    Attributes:
-        best (Package): The best candidate
-            for the package.
-        candidates (list[Package]): All candidates for the
-            package.
-        applicable (list[Package]): Candidates
-            that match the requirement.
-    """
-
+    #: The best matching package, or None if no match was found.
     best: Package | None
+    #: The applicable packages, excluding those with unmatching versions.
     applicable: list[Package]
+    #: All candidates found for the requirement.
     candidates: list[Package]
 
 

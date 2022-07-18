@@ -15,7 +15,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - run: npx changelogithub
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
