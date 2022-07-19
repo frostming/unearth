@@ -8,7 +8,7 @@ import sys
 from typing import Any, cast
 from urllib.parse import urlencode
 
-from packaging.requirements import Requirement
+import packaging.requirements
 from packaging.specifiers import SpecifierSet
 from packaging.tags import Tag
 from packaging.utils import (
@@ -248,13 +248,15 @@ class Evaluator:
 
 
 def evaluate_package(
-    package: Package, requirement: Requirement, allow_prereleases: bool | None = None
+    package: Package,
+    requirement: packaging.requirements.Requirement,
+    allow_prereleases: bool | None = None,
 ) -> bool:
     """Evaluate the package based on the requirement.
 
     Args:
         package (Package): The package to evaluate
-        requirement (Requirement): The requirement to evaluate against
+        requirement: The requirement to evaluate against
         allow_prerelease (bool|None): Whether to allow prereleases,
             or None to infer from the specifier.
     Returns:

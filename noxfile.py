@@ -16,7 +16,7 @@ def docs(session):
     session.install("-r", "docs/requirements.txt")
 
     # Generate documentation into `build/docs`
-    session.run("sphinx-build", "-W", "-b", "html", "docs/", "build/docs")
+    session.run("sphinx-build", "-n", "-W", "-b", "html", "docs/", "build/docs")
 
 
 @nox.session(name="docs-live", python="3.10")

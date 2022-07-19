@@ -4,12 +4,12 @@ from __future__ import annotations
 import atexit
 import functools
 import os
-from pathlib import Path
+import pathlib
 from tempfile import TemporaryDirectory
 from typing import Iterable, NamedTuple, cast
 from urllib.parse import urljoin
 
-from packaging.requirements import Requirement
+import packaging.requirements
 from packaging.utils import BuildTag, canonicalize_name, parse_wheel_filename
 from packaging.version import parse as parse_version
 
@@ -150,7 +150,7 @@ class PackageFinder:
     def _evaluate_packages(
         self,
         packages: Iterable[Package],
-        requirement: Requirement,
+        requirement: packaging.requirements.Requirement,
         allow_prereleases: bool | None = None,
     ) -> Iterable[Package]:
         evaluator = functools.partial(
@@ -246,7 +246,7 @@ class PackageFinder:
 
     def _find_packages_from_requirement(
         self,
-        requirement: Requirement,
+        requirement: packaging.requirements.Requirement,
         allow_yanked: bool | None = None,
         hashes: dict[str, list[str]] | None = None,
     ) -> Iterable[Package]:
@@ -259,7 +259,7 @@ class PackageFinder:
 
     def find_matches(
         self,
-        requirement: Requirement | str,
+        requirement: packaging.requirements.Requirement | str,
         allow_yanked: bool | None = None,
         allow_prereleases: bool | None = None,
         hashes: dict[str, list[str]] | None = None,
@@ -267,7 +267,7 @@ class PackageFinder:
         """Find all packages matching the given requirement, best match first.
 
         Args:
-            requirement (Requirement|str): A packaging.requirements.Requirement
+            requirement: A packaging.requirements.Requirement
                 instance or a string to construct it.
             allow_yanked (bool|None): Whether to allow yanked candidates,
                 or None to infer from the specifier.
@@ -279,7 +279,7 @@ class PackageFinder:
             list[Package]: The packages list sorted by best match
         """
         if isinstance(requirement, str):
-            requirement = Requirement(requirement)
+            requirement = packaging.requirements.Requirement(requirement)
         return sorted(
             self._evaluate_packages(
                 self._find_packages_from_requirement(requirement, allow_yanked, hashes),
@@ -292,7 +292,7 @@ class PackageFinder:
 
     def find_best_match(
         self,
-        requirement: Requirement | str,
+        requirement: packaging.requirements.Requirement | str,
         allow_yanked: bool | None = None,
         allow_prereleases: bool | None = None,
         hashes: dict[str, list[str]] = None,
@@ -300,7 +300,7 @@ class PackageFinder:
         """Find the best match for the given requirement.
 
         Args:
-            requirement (Requirement|str): A packaging.requirements.Requirement
+            requirement: A packaging.requirements.Requirement
                 instance or a string to construct it.
             allow_yanked (bool|None): Whether to allow yanked candidates,
                 or None to infer from the specifier.
@@ -312,7 +312,7 @@ class PackageFinder:
             BestMatch: The best match
         """
         if isinstance(requirement, str):
-            requirement = Requirement(requirement)
+            requirement = packaging.requirements.Requirement(requirement)
         candidates = list(
             self._find_packages_from_requirement(requirement, allow_yanked, hashes)
         )
@@ -325,10 +325,10 @@ class PackageFinder:
     def download_and_unpack(
         self,
         link: Link,
-        location: str | Path,
-        download_dir: str | Path | None = None,
+        location: str | pathlib.Path,
+        download_dir: str | pathlib.Path | None = None,
         hashes: dict[str, list[str]] | None = None,
-    ) -> Path:
+    ) -> pathlib.Path:
         """Download and unpack the package at the given link.
 
         If the link is a remote link, it will be downloaded to the ``download_dir``.
@@ -340,13 +340,13 @@ class PackageFinder:
 
         Args:
             link (Link): The link to download
-            location (str|Path): The destination directory
-            download_dir (str|Path|None): The directory to download to, or None to use a
+            location: The destination directory
+            download_dir: The directory to download to, or None to use a
                 temporary directory created by unearth.
             hashes (dict[str, list[str]]|None): The optional hash dict for validation.
 
         Returns:
-            Path: The path to the installable file or directory.
+            The path to the installable file or directory.
         """
         # Strip the rev part for VCS links
         if hashes is None and link.hash_name:
@@ -356,8 +356,8 @@ class PackageFinder:
         file = unpack_link(
             self.session,
             link,
-            Path(download_dir),
-            Path(location),
+            pathlib.Path(download_dir),
+            pathlib.Path(location),
             hashes,
             verbosity=self.verbosity,
         )

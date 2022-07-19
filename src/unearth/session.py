@@ -8,9 +8,9 @@ import mimetypes
 import os
 from typing import Any, Iterable, cast
 
+import requests.adapters
 import urllib3
 from requests import Session
-from requests.adapters import BaseAdapter, HTTPAdapter
 from requests.models import PreparedRequest, Response
 
 from unearth.auth import MultiDomainBasicAuth
@@ -39,11 +39,11 @@ class InsecureMixin:
         return super().cert_verify(conn, url, verify=False, cert=cert)
 
 
-class InsecureHTTPAdapter(InsecureMixin, HTTPAdapter):
+class InsecureHTTPAdapter(InsecureMixin, requests.adapters.HTTPAdapter):
     pass
 
 
-class LocalFSAdapter(BaseAdapter):
+class LocalFSAdapter(requests.adapters.BaseAdapter):
     def send(self, request: PreparedRequest, *args: Any, **kwargs: Any) -> Response:
         link = Link(cast(str, request.url))
         path = link.file_path
@@ -84,19 +84,15 @@ class PyPISession(Session):
     """
     A session with caching enabled and specific hosts trusted.
 
-    Attributes:
-        secure_adapter_cls (type): The adapter class to use for secure
-            connections.
-        insecure_adapter_cls (type): The adapter class to use for insecure
-            connections.
-
     Args:
         index_urls: The PyPI index URLs to use.
         retries: The number of retries to attempt.
         trusted_hosts: The hosts to trust.
     """
 
-    secure_adapter_cls = HTTPAdapter
+    #: The adapter class to use for secure connections.
+    secure_adapter_cls = requests.adapters.HTTPAdapter
+    #: The adapter class to use for insecure connections.
     insecure_adapter_cls = InsecureHTTPAdapter
 
     def __init__(

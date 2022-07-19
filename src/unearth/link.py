@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import dataclasses as dc
 import os
+import pathlib
 import sys
-from pathlib import Path
 from typing import Any
 from urllib.parse import ParseResult, unquote, urlparse
 
@@ -77,7 +77,7 @@ class Link:
         return isinstance(__o, Link) and self._ident() == __o._ident()
 
     @classmethod
-    def from_path(cls, file_path: str | Path) -> Link:
+    def from_path(cls, file_path: str | pathlib.Path) -> Link:
         """Create a link from a local file path"""
         url = path_to_url(str(file_path))
         return cls(url)
@@ -87,8 +87,8 @@ class Link:
         return self.parsed.scheme == "file"
 
     @property
-    def file_path(self) -> Path:
-        return Path(url_to_path(self.url_without_fragment))
+    def file_path(self) -> pathlib.Path:
+        return pathlib.Path(url_to_path(self.url_without_fragment))
 
     @property
     def is_vcs(self) -> bool:
