@@ -95,7 +95,7 @@ def fetch_page(session: PyPISession, location: Link) -> HTMLPage | None:
     except LinkCollectError as e:
         logger.warning("Skip %s because of %s.", location.redacted, e)
         return None
-    return HTMLPage(location, resp.text)
+    return HTMLPage(Link(resp.url), resp.text)
 
 
 def _collect_links_from_html(session: PyPISession, location: Link) -> Iterable[Link]:
