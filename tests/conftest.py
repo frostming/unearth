@@ -1,8 +1,10 @@
 """Configuration for the pytest test suite."""
+from ssl import SSLContext
 from unittest import mock
 
 import flask
 import pytest
+import trustme
 from wsgiadapter import WSGIAdapter as _WSGIAdapter
 
 from tests.fixtures.app import BASE_DIR, create_app
@@ -18,6 +20,33 @@ class WSGIAdapter(_WSGIAdapter):
 
 class InsecureWSGIAdapter(InsecureMixin, WSGIAdapter):
     pass
+
+
+@pytest.fixture(scope="session")
+def custom_certificate_authority():
+    return trustme.CA()
+
+
+@pytest.fixture(scope="session")
+def self_signed_server_cert(httpserver_listen_address, custom_certificate_authority):
+    server, port = httpserver_listen_address
+    return custom_certificate_authority.issue_cert(server)
+
+
+@pytest.fixture(scope="session")
+def httpserver_ssl_context(self_signed_server_cert):
+    server_context = SSLContext()
+    self_signed_server_cert.configure_cert(server_context)
+    return server_context
+
+
+@pytest.fixture(scope="session")
+def httpserver_listen_address():
+    return (
+        "localhost",
+        # select the port randomly
+        0,
+    )
 
 
 @pytest.fixture()

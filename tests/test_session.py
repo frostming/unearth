@@ -31,6 +31,17 @@ def test_session_is_secure_origin(session, url, is_secure):
     assert session.is_secure_origin(Link(url)) == is_secure
 
 
+def test_session_with_selfsigned_ca(
+    httpserver, custom_certificate_authority, session, tmp_path
+):
+    ca_cert = tmp_path / "ca.crt"
+    custom_certificate_authority.cert_pem.write_to_path(ca_cert)
+    session.set_ca_certificates(ca_cert)
+
+    httpserver.expect_request("/").respond_with_json({})
+    assert session.get(httpserver.url_for("/")).json() == {}
+
+
 def test_session_auth_401_if_no_prompting(pypi_auth, session):
     session.auth = MultiDomainBasicAuth(prompting=False)
     resp = session.get("https://pypi.org/simple")
