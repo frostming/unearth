@@ -6,6 +6,7 @@ import ipaddress
 import logging
 import mimetypes
 import os
+from pathlib import Path
 from typing import Any, Iterable, cast
 
 import requests.adapters
@@ -88,6 +89,10 @@ class PyPISession(Session):
         index_urls: The PyPI index URLs to use.
         retries: The number of retries to attempt.
         trusted_hosts: The hosts to trust.
+        ca_certificates: The path to a file where the certificates for
+            CAs reside. These are used when verifying the host
+            certificates of the index servers. When left unset, the
+            default certificates of the requests library will be used.
     """
 
     #: The adapter class to use for secure connections.
@@ -101,6 +106,7 @@ class PyPISession(Session):
         index_urls: Iterable[str] = (),
         retries: int = DEFAULT_MAX_RETRIES,
         trusted_hosts: Iterable[str] = (),
+        ca_certificates: Path | None = None,
     ) -> None:
         super().__init__()
 
@@ -123,6 +129,16 @@ class PyPISession(Session):
         for host in trusted_hosts:
             self.add_trusted_host(host)
         self.auth = MultiDomainBasicAuth(index_urls=index_urls)
+
+        if ca_certificates is not None:
+            self.set_ca_certificates(ca_certificates)
+
+    def set_ca_certificates(self, cert_file: Path):
+        """
+        Set one or multiple certificate authorities which sign the
+        server's certs.
+        """
+        self.verify = str(cert_file)
 
     def add_trusted_host(self, host: str) -> None:
         """Trust the given host by not verifying the SSL certificate."""

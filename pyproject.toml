@@ -50,8 +50,10 @@ package-dir = "src"
 [tool.pdm.dev-dependencies]
 test = [
     "pytest>=6.1",
+    "pytest-httpserver>=1.0.4",
     "flask>=2.1.2",
     "requests-wsgi-adapter>=0.4.1",
+    "trustme>=0.9.0",
 ]
 
 [tool.pdm.scripts]
