@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import getpass
 import logging
-from typing import Any, Iterable, Tuple, cast
+from typing import Any, Iterable, Optional, Tuple, cast
 from urllib.parse import urlparse
 
 from requests import Response
@@ -10,7 +10,7 @@ from requests.auth import AuthBase, HTTPBasicAuth
 from requests.models import PreparedRequest
 from requests.utils import get_netrc_auth
 
-from unearth.utils import split_auth_from_url
+from unearth.utils import split_auth_from_netloc, split_auth_from_url
 
 try:
     import keyring  # type: ignore
@@ -18,6 +18,7 @@ except ModuleNotFoundError:
     keyring = None  # type: ignore[assignment]
 
 AuthInfo = Tuple[str, str]
+MaybeAuth = Optional[Tuple[str, Optional[str]]]
 logger = logging.getLogger(__package__)
 
 
@@ -62,28 +63,22 @@ class MultiDomainBasicAuth(AuthBase):
         self._cached_passwords: dict[str, AuthInfo] = {}
         self._credentials_to_save: tuple[str, str, str] | None = None
 
-    def _get_index_url(self, url: str) -> str | None:
-        """Return the original index URL matching the requested URL.
-
-        Cached or dynamically generated credentials may work against
-        the original index URL rather than just the netloc.
-
-        The provided url should have had its username and password
-        removed already. If the original index url had credentials then
-        they will be included in the return value.
+    def _get_auth_from_index_url(self, netloc: str) -> tuple[MaybeAuth, str | None]:
+        """Return the extracted auth and the original index URL matching
+        the requested netloc.
 
         Returns None if no matching index was found, or if --no-index
         was specified by the user.
         """
-        if not url or not self.index_urls:
-            return None
+        if not netloc or not self.index_urls:
+            return None, None
 
         for u in self.index_urls:
-            _, clean_url = split_auth_from_url(u)
-            prefix = clean_url.rstrip("/") + "/"
-            if url.startswith(prefix):
-                return u
-        return None
+            parsed = urlparse(u)
+            auth, index_netloc = split_auth_from_netloc(parsed.netloc)
+            if index_netloc == netloc:
+                return auth, u
+        return None, None
 
     def _get_new_credentials(
         self,
@@ -106,17 +101,14 @@ class MultiDomainBasicAuth(AuthBase):
                 return cast(AuthInfo, auth)
 
         # Find a matching index url for this request
-        index_url = self._get_index_url(url)
+        index_auth, index_url = self._get_auth_from_index_url(netloc)
         if index_url:
-            # Split the credentials from the url.
-            index_auth, _ = split_auth_from_url(index_url)
             logger.debug("Found index url %s", index_url)
 
             # If an index URL was found, try its embedded credentials
-            if index_auth is not None:
-                if index_auth[1] is not None:
-                    logger.debug("Found credentials in index url for %s", netloc)
-                    return cast(AuthInfo, index_auth)
+            if index_auth is not None and index_auth[1] is not None:
+                logger.debug("Found credentials in index url for %s", netloc)
+                return cast(AuthInfo, index_auth)
 
         # Get creds from netrc if we still don't have them
         if allow_netrc:
