@@ -167,3 +167,18 @@ def splitext(path: str) -> tuple[str, str]:
         ext = base[-4:] + ext
         base = base[:-4]
     return base, ext
+
+
+def format_size(size: str) -> str:
+    try:
+        int_size = int(size)
+    except (TypeError, ValueError):
+        return "size unknown"
+    if int_size > 1000 * 1000:
+        return f"{int_size / 1000.0 / 1000:.1f} MB"
+    elif int_size > 10 * 1000:
+        return f"{int(int_size / 1000)} kB"
+    elif int_size > 1000:
+        return f"{int_size / 1000.0:.1f} kB"
+    else:
+        return f"{int(int_size)} bytes"
