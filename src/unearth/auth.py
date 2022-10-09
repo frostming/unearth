@@ -40,11 +40,12 @@ def get_keyring_auth(url: str | None, username: str | None) -> AuthInfo | None:
                 return cred.username, cred.password
             return None
 
-        if username:
-            logger.debug("Getting password from keyring for %s", url)
-            password = keyring.get_password(url, username)
-            if password:
-                return username, password
+        if not username:
+            username = "__token__"
+        logger.debug("Getting password from keyring for %s@%s", username, url)
+        password = keyring.get_password(url, username)
+        if password:
+            return username, password
 
     except Exception as exc:
         logger.warning(
