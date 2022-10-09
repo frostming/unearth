@@ -22,6 +22,7 @@ from unearth.utils import (
     XZ_EXTENSIONS,
     ZIP_EXTENSIONS,
     display_path,
+    format_size,
 )
 from unearth.vcs import vcs_support
 
@@ -296,13 +297,14 @@ def unpack_link(
         # A remote artfiact link, check the download dir first
         artifact = download_dir / link.filename
         if not _check_downloaded(artifact, hashes):
-            logger.info("Downloading %s to %s", link, artifact)
             resp = session.get(link.normalized, stream=True)
             try:
                 resp.raise_for_status()
             except HTTPError as e:
                 raise UnpackError(f"Download failed: {e}") from None
 
+            size = format_size(resp.headers.get("Content-Length", ""))
+            logger.info("Downloading %s (%s)", link, size)
             with artifact.open("wb") as f:
                 for chunk in resp.iter_content(chunk_size=READ_CHUNK_SIZE):
                     if chunk:
