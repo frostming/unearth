@@ -57,7 +57,7 @@ class TargetPython:
     impl: str | None = None
     platforms: list[str] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self._valid_tags: list[Tag] | None = None
 
     def supported_tags(self) -> list[Tag]:

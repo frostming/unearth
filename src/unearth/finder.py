@@ -295,7 +295,7 @@ class PackageFinder:
         requirement: packaging.requirements.Requirement | str,
         allow_yanked: bool | None = None,
         allow_prereleases: bool | None = None,
-        hashes: dict[str, list[str]] = None,
+        hashes: dict[str, list[str]] | None = None,
     ) -> BestMatch:
         """Find the best match for the given requirement.
 
