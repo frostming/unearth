@@ -19,7 +19,7 @@ def test_collector_skip_vcs_link(pypi, session, caplog):
         )
     )
     assert not collected
-    assert "because it is a VCS link" in caplog.records[0].message
+    assert "It is a VCS link" in caplog.records[0].message
 
 
 def test_collect_links_from_404_page(pypi, session):

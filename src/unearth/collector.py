@@ -1,6 +1,7 @@
 """Collect links from simple index or find links location."""
 from __future__ import annotations
 
+import functools
 import logging
 import mimetypes
 from html.parser import HTMLParser
@@ -86,23 +87,24 @@ def collect_links_from_location(
         yield from _collect_links_from_html(session, location)
 
 
-def fetch_page(session: PyPISession, location: Link) -> HTMLPage | None:
+@functools.lru_cache(maxsize=None)
+def fetch_page(session: PyPISession, location: Link) -> HTMLPage:
     if location.is_vcs:
-        logger.warning("Skip %s because it is a VCS link.", location.redacted)
-        return None
-    try:
-        resp = _get_html_response(session, location)
-    except LinkCollectError as e:
-        logger.warning("Skip %s because of %s.", location.redacted, e)
-        return None
+        raise LinkCollectError("It is a VCS link.")
+    resp = _get_html_response(session, location)
     return HTMLPage(Link(resp.url), resp.text)
 
 
 def _collect_links_from_html(session: PyPISession, location: Link) -> Iterable[Link]:
     if not session.is_secure_origin(location):
         return []
-    page = fetch_page(session, location)
-    return parse_html_page(page) if page is not None else []
+    try:
+        page = fetch_page(session, location)
+    except LinkCollectError as e:
+        logger.warning("Failed to collect links from %s: %s", location.redacted, e)
+        return []
+    else:
+        return parse_html_page(page)
 
 
 def _is_html_file(file_url: str) -> bool:
