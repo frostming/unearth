@@ -302,9 +302,11 @@ def unpack_link(
                 resp.raise_for_status()
             except HTTPError as e:
                 raise UnpackError(f"Download failed: {e}") from None
-
-            size = format_size(resp.headers.get("Content-Length", ""))
-            logger.info("Downloading %s (%s)", link, size)
+            if getattr(resp, "from_cache", False):
+                logger.info("Using cached %s", link)
+            else:
+                size = format_size(resp.headers.get("Content-Length", ""))
+                logger.info("Downloading %s (%s)", link, size)
             with artifact.open("wb") as f:
                 for chunk in resp.iter_content(chunk_size=READ_CHUNK_SIZE):
                     if chunk:

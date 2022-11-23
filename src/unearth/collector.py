@@ -92,6 +92,9 @@ def fetch_page(session: PyPISession, location: Link) -> HTMLPage:
     if location.is_vcs:
         raise LinkCollectError("It is a VCS link.")
     resp = _get_html_response(session, location)
+    from_cache = getattr(resp, "from_cache", False)
+    cache_text = " (from cache)" if from_cache else ""
+    logger.debug("Fetching HTML page %s%s", location.redacted, cache_text)
     return HTMLPage(Link(resp.url), resp.text)
 
 
