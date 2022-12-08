@@ -50,6 +50,7 @@ def test_collect_links_from_index_page(pypi, session):
         key=lambda link: link.filename,
     )
     assert len(collected) == 4
+    assert all(link.url.startswith("https://test.pypi.org") for link in collected)
 
 
 @pytest.mark.parametrize("filename", ["findlinks", "findlinks/index.html"])
