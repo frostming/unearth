@@ -23,7 +23,7 @@ copyright = "2022, Frost Ming"
 author = "Frost Ming"
 
 # The full version, including alpha/beta/rc tags
-release = "0.5.2"
+release = "0.6.3"
 
 
 # -- General configuration ---------------------------------------------------
