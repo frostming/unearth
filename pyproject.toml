@@ -6,7 +6,7 @@ build-backend = "pdm.pep517.api"
 name = "unearth"
 description = "A utility to fetch and download python packages"
 authors = [
-    {name = "Frost Ming", email = "mianghong@gmail.com"}
+    {name = "Frost Ming", email = "me@frostming.com"}
 ]
 license = {text = "MIT"}
 readme = "README.md"
@@ -14,7 +14,8 @@ requires-python = ">=3.7"
 dependencies = [
     "packaging>=20",
     "requests>=2.25",
-    "cached-property>=1.5.2; python_version < \"3.8\""]
+    "cached-property>=1.5.2; python_version < \"3.8\"",
+]
 dynamic = ["version"]
 
 classifiers = [
@@ -25,12 +26,13 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3 :: Only",
 ]
 
 [project.urls]
-Repository = "https://github.com/frostming/unearth"
 Homepage = "https://github.com/frostming/unearth"
+Documentation = "https://unearth.readthedocs.io"
 Changelog = "https://github.com/frostming/unearth/releases"
 
 [project.optional-dependencies]
