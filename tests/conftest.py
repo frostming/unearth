@@ -95,3 +95,9 @@ def session():
         yield s
     finally:
         s.close()
+
+
+@pytest.fixture(params=["html", "json"])
+def content_type(request, monkeypatch):
+    monkeypatch.setenv("INDEX_RETURN_TYPE", request.param)
+    return request.param

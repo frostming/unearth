@@ -4,7 +4,7 @@ from unearth import Link
 from unearth.evaluator import TargetPython
 from unearth.finder import PackageFinder
 
-pytestmark = pytest.mark.usefixtures("pypi")
+pytestmark = pytest.mark.usefixtures("pypi", "content_type")
 
 
 @pytest.mark.parametrize(

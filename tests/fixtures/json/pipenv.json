@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "api-version": "1.0"
+  },
+  "name": "pipenv",
+  "files": [
+    {
+      "filename": "pipenv-2022.4.20-py2.py3-none-any.whl",
+      "url": "/files/pipenv-2022.4.20-py2.py3-none-any.whl",
+      "hashes": {
+        "sha256": "e59387e904ed7642e2c01026545fe57f5df9cdb9468a7d32f21947748742b602"
+      },
+      "requires-python": ">=3.6",
+      "yanked": ""
+    },
+    {
+      "filename": "pipenv-2022.4.20.tar.gz",
+      "url": "/files/pipenv-2022.4.20.tar.gz",
+      "hashes": {
+        "sha256": "f9101d3f9a38e9296a33630a5ed29dee4d5f2661d199dd9a60071f0c49f2e432"
+      },
+      "requires-python": ">=3.6",
+      "yanked": ""
+    },
+    {
+      "filename": "pipenv-2022.4.30-py2.py3-none-any.whl",
+      "url": "/files/pipenv-2022.4.30-py2.py3-none-any.whl",
+      "hashes": {
+        "sha256": "30568d90a566148a630ce3382843d59beaede28d1c4e9045278972036ebd178c"
+      },
+      "requires-python": ">=3.7"
+    },
+    {
+      "filename": "pipenv-2022.4.30.tar.gz",
+      "url": "/files/pipenv-2022.4.30.tar.gz",
+      "hashes": {
+        "sha256": "e26ded6ab90a7900676a1db9955d5ee714115f443aecc072b09497153ed237c7"
+      },
+      "requires-python": ">=3.7"
+    }
+  ]
+}

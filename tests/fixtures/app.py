@@ -1,3 +1,5 @@
+import os
+import random
 from pathlib import Path
 
 import flask
@@ -33,12 +35,29 @@ def package_index(package):
     canonical_name = canonicalize_name(package)
     if package != canonical_name:
         return flask.redirect(flask.url_for(".package_index", package=canonical_name))
-    return flask.send_from_directory(BASE_DIR / "index", package + ".html")
+    if os.getenv("INDEX_RETURN_TYPE", "html") == "json":
+        return flask.send_from_directory(BASE_DIR / "json", package + ".json"), {
+            "Content-Type": "application/vnd.pypi.simple.v1+json"
+        }
+    else:
+        content_type = random.choice(
+            ["text/html", "application/vnd.pypi.simple.v1+html"]
+        )
+        return flask.send_from_directory(BASE_DIR / "index", package + ".html"), {
+            "Content-Type": content_type
+        }
 
 
 @bp.route("/simple")
 def package_index_root():
-    packages = [p.stem for p in (BASE_DIR / "index").glob("*.html")]
+    packages = sorted(p.stem for p in (BASE_DIR / "index").glob("*.html"))
+    if os.getenv("INDEX_RETURN_TYPE", "html") == "json":
+        return flask.jsonify(
+            {
+                "meta": {"api-version": "1.0"},
+                "projects": [{"name": p} for p in packages],
+            }
+        ), {"Content-Type": "application/vnd.pypi.simple.v1+html"}
     return flask.render_template_string(INDEX_TEMPLATE, packages=packages)
 
 

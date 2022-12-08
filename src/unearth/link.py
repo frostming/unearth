@@ -5,7 +5,7 @@ import dataclasses as dc
 import os
 import pathlib
 import sys
-from typing import Any
+from typing import Any, cast
 from urllib.parse import ParseResult, unquote, urlparse
 
 from unearth.utils import (
@@ -34,6 +34,10 @@ class Link:
         comes_from (str|None): The index page that contains this link
         yank_reason (str|None): The reason why this link is yanked
         requires_python (str|None): The data-python-requires attribute of this link
+        dist_info_metadata (str|None): (PEP 658) The hash name and value of the
+            dist-info metadata, or true if hash is not available
+        hashes (dict[str, str]|None): The hash name and value of the link from
+            JSON simple API
         vcs (str|None): The vcs type of this link(git/hg/svn/bzr)
     """
 
@@ -41,6 +45,8 @@ class Link:
     comes_from: str | None = None
     yank_reason: str | None = None
     requires_python: str | None = None
+    dist_info_metadata: bool | dict[str, str] | None = None
+    hashes: dict[str, str] | None = None
     vcs: str | None = dc.field(init=False, default=None)
 
     def __post_init__(self) -> None:
@@ -60,7 +66,7 @@ class Link:
             "requires_python": self.requires_python,
         }
 
-    def _ident(self) -> tuple:
+    def __ident(self) -> tuple:
         return (self.normalized, self.yank_reason, self.requires_python)
 
     @cached_property
@@ -71,10 +77,10 @@ class Link:
         return f"<Link {self.redacted} (from {self.comes_from})>"
 
     def __hash__(self) -> int:
-        return hash(self._ident())
+        return hash(self.__ident())
 
     def __eq__(self, __o: object) -> bool:
-        return isinstance(__o, Link) and self._ident() == __o._ident()
+        return isinstance(__o, Link) and self.__ident() == __o.__ident()
 
     @classmethod
     def from_path(cls, file_path: str | pathlib.Path) -> Link:
@@ -97,6 +103,14 @@ class Link:
     @property
     def filename(self) -> str:
         return os.path.basename(unquote(self.parsed.path))
+
+    @property
+    def dist_info_link(self) -> Link | None:
+        return (
+            type(self)(f"{self.url_without_fragment}.metadata", self.comes_from)
+            if self.dist_info_metadata is not None
+            else None
+        )
 
     @property
     def is_wheel(self) -> bool:
@@ -145,3 +159,12 @@ class Link:
     @property
     def is_yanked(self) -> bool:
         return self.yank_reason is not None
+
+    @property
+    def hash_option(self) -> dict[str, list[str]] | None:
+        """Return the hash option for the downloader to use"""
+        if self.hashes:
+            return {name: [value] for name, value in self.hashes.items()}
+        if self.hash_name:
+            return {self.hash_name: [cast(str, self.hash)]}
+        return None
