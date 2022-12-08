@@ -58,12 +58,12 @@ def fixtures_dir():
 def pypi():
     wsgi_app = create_app()
     with mock.patch.object(
-        PyPISession, "insecure_adapter_cls", return_value=WSGIAdapter(wsgi_app)
+        PyPISession, "insecure_adapter_cls", return_value=InsecureWSGIAdapter(wsgi_app)
     ):
         with mock.patch.object(
             PyPISession,
             "secure_adapter_cls",
-            return_value=InsecureWSGIAdapter(wsgi_app),
+            return_value=WSGIAdapter(wsgi_app),
         ):
             yield wsgi_app
 
