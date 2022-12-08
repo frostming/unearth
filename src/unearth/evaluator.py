@@ -16,7 +16,7 @@ from packaging.utils import (
     canonicalize_name,
     parse_wheel_filename,
 )
-from packaging.version import InvalidVersion
+from packaging.version import InvalidVersion, Version
 from requests import Session
 
 from unearth.link import Link
@@ -239,6 +239,12 @@ class Evaluator:
                 if version is None:
                     raise LinkMismatchError(
                         f"Missing version in the filename {egg_info}"
+                    )
+                try:
+                    Version(version)
+                except InvalidVersion:
+                    raise LinkMismatchError(
+                        f"Invalid version in the filename {egg_info}: {version}"
                     )
             self._check_hashes(link)
         except LinkMismatchError as e:
