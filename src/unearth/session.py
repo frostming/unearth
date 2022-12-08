@@ -6,6 +6,7 @@ import ipaddress
 import logging
 import mimetypes
 import os
+import warnings
 from pathlib import Path
 from typing import Any, Iterable, cast
 
@@ -38,6 +39,11 @@ def _compare_origin_part(allowed: str, actual: str) -> bool:
 class InsecureMixin:
     def cert_verify(self, conn, url, verify, cert):
         return super().cert_verify(conn, url, verify=False, cert=cert)
+
+    def send(self, request, *args, **kwargs):
+        with warnings.catch_warnings():
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            return super().send(request, *args, **kwargs)
 
 
 class InsecureHTTPAdapter(InsecureMixin, requests.adapters.HTTPAdapter):
