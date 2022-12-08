@@ -6,7 +6,7 @@ import functools
 import os
 import pathlib
 from tempfile import TemporaryDirectory
-from typing import Iterable, NamedTuple, cast
+from typing import Iterable, NamedTuple
 from urllib.parse import urljoin
 
 import packaging.requirements
@@ -349,8 +349,8 @@ class PackageFinder:
             The path to the installable file or directory.
         """
         # Strip the rev part for VCS links
-        if hashes is None and link.hash_name:
-            hashes = {link.hash_name: [cast(str, link.hash)]}
+        if hashes is None:
+            hashes = link.hash_option
         if download_dir is None:
             download_dir = TemporaryDirectory(prefix="unearth-download-").name
         file = unpack_link(

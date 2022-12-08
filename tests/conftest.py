@@ -58,12 +58,12 @@ def fixtures_dir():
 def pypi():
     wsgi_app = create_app()
     with mock.patch.object(
-        PyPISession, "insecure_adapter_cls", return_value=WSGIAdapter(wsgi_app)
+        PyPISession, "insecure_adapter_cls", return_value=InsecureWSGIAdapter(wsgi_app)
     ):
         with mock.patch.object(
             PyPISession,
             "secure_adapter_cls",
-            return_value=InsecureWSGIAdapter(wsgi_app),
+            return_value=WSGIAdapter(wsgi_app),
         ):
             yield wsgi_app
 
@@ -95,3 +95,9 @@ def session():
         yield s
     finally:
         s.close()
+
+
+@pytest.fixture(params=["html", "json"])
+def content_type(request, monkeypatch):
+    monkeypatch.setenv("INDEX_RETURN_TYPE", request.param)
+    return request.param

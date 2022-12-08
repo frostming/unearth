@@ -5,7 +5,7 @@ import dataclasses as dc
 import hashlib
 import logging
 import sys
-from typing import Any, cast
+from typing import Any
 from urllib.parse import urlencode
 
 import packaging.requirements
@@ -169,11 +169,14 @@ class Evaluator:
 
         if not self.hashes:
             return
-        if link.hash_name and link.hash_name in self.hashes:
-            if link.hash not in self.hashes[link.hash_name]:
-                hash_mismatch(
-                    link.hash_name, cast(str, link.hash), self.hashes[link.hash_name]
-                )
+        link_hashes = link.hash_option
+        if link_hashes:
+            for hash_name, allowed_hashes in self.hashes.items():
+                if hash_name in link_hashes:
+                    given_hash = link_hashes[hash_name][0]
+                    if given_hash not in allowed_hashes:
+                        hash_mismatch(hash_name, given_hash, allowed_hashes)
+                    return
 
         hash_name, allowed_hashes = next(iter(self.hashes.items()))
         given_hash = self._get_hash(link, hash_name)
@@ -181,8 +184,6 @@ class Evaluator:
             hash_mismatch(hash_name, given_hash, allowed_hashes)
 
     def _get_hash(self, link: Link, hash_name: str) -> str:
-        if link.hash_name == hash_name:
-            return cast(str, link.hash)
         resp = self.session.get(link.normalized, stream=True)
         hasher = hashlib.new(hash_name)
         for chunk in resp.iter_content(chunk_size=1024 * 8):

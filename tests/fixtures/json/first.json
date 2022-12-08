@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "api-version": "1.0"
+  },
+  "name": "first",
+  "files": [
+    {
+      "filename": "first-2.0.1-py2.py3-none-any.whl",
+      "url": "/files/first-2.0.1-py2.py3-none-any.whl",
+      "hashes": {
+        "sha256": "41d5b64e70507d0c3ca742d68010a76060eea8a3d863e9b5130ab11a4a91aa0e"
+      }
+    },
+    {
+      "filename": "first-2.0.2.tar.gz",
+      "url": "/files/first-2.0.2.tar.gz",
+      "hashes": {
+        "sha256": "ff285b08c55f8c97ce4ea7012743af2495c9f1291785f163722bd36f6af6d3bf"
+      }
+    }
+  ]
+}

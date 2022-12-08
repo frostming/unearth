@@ -38,9 +38,10 @@ def test_skip_non_html_archive(pypi, session, caplog):
         )
     )
     assert not collected
-    assert "NotHTML: only HTML is supported" in caplog.records[0].message
+    assert "Content-Type unsupported" in caplog.records[0].message
 
 
+@pytest.mark.usefixtures("content_type")
 def test_collect_links_from_index_page(pypi, session):
     collected = sorted(
         collect_links_from_location(
@@ -49,6 +50,7 @@ def test_collect_links_from_index_page(pypi, session):
         key=lambda link: link.filename,
     )
     assert len(collected) == 4
+    assert all(link.url.startswith("https://test.pypi.org") for link in collected)
 
 
 @pytest.mark.parametrize("filename", ["findlinks", "findlinks/index.html"])

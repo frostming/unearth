@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import functools
+import json
 import logging
 import mimetypes
 from html.parser import HTMLParser
@@ -14,6 +15,11 @@ from unearth.link import Link
 from unearth.session import PyPISession
 from unearth.utils import is_archive_file, path_to_url
 
+SUPPORTED_CONTENT_TYPES = (
+    "text/html",
+    "application/vnd.pypi.simple.v1+html",
+    "application/vnd.pypi.simple.v1+json",
+)
 logger = logging.getLogger(__package__)
 
 
@@ -21,9 +27,11 @@ class LinkCollectError(Exception):
     pass
 
 
-class HTMLPage(NamedTuple):
+class IndexPage(NamedTuple):
     link: Link
-    html: str
+    content: bytes
+    encoding: str | None
+    content_type: str
 
 
 class IndexHTMLParser(HTMLParser):
@@ -41,9 +49,10 @@ class IndexHTMLParser(HTMLParser):
             self.anchors.append(dict(attrs))
 
 
-def parse_html_page(page: HTMLPage) -> Iterable[Link]:
+def parse_html_page(page: IndexPage) -> Iterable[Link]:
+    """PEP 503 simple index API"""
     parser = IndexHTMLParser()
-    parser.feed(page.html)
+    parser.feed(page.content.decode(page.encoding or "utf-8"))
     base_url = parser.base_url or page.link.url_without_fragment
     for anchor in parser.anchors:
         href = anchor.get("href")
@@ -52,8 +61,45 @@ def parse_html_page(page: HTMLPage) -> Iterable[Link]:
         url = parse.urljoin(base_url, href)
         requires_python = anchor.get("data-requires-python")
         yank_reason = anchor.get("data-yanked")
+        data_dist_info_metadata = anchor.get("data-dist-info-metadata")
+        dist_info_metadata: bool | dict[str, str] | None = None
+        if data_dist_info_metadata:
+            hash_name, has_hash, hash_value = data_dist_info_metadata.partition("=")
+            if has_hash:
+                dist_info_metadata = {hash_name: hash_value}
+            else:
+                dist_info_metadata = True
         yield Link(
-            url, base_url, yank_reason=yank_reason, requires_python=requires_python
+            url,
+            base_url,
+            yank_reason=yank_reason,
+            requires_python=requires_python,
+            dist_info_metadata=dist_info_metadata,
+        )
+
+
+def parse_json_response(page: IndexPage) -> Iterable[Link]:
+    """PEP 691 JSON simple API"""
+    data = json.loads(page.content)
+    base_url = page.link.url_without_fragment
+    for file in data.get("files", []):
+        url = file.get("url")
+        if not url:
+            continue
+        url = parse.urljoin(base_url, url)
+        requires_python: str | None = file.get("requires-python")
+        yank_reason: str | None = file.get("yanked")
+        dist_info_metadata: bool | dict[str, str] | None = file.get(
+            "dist-info-metadata"
+        )
+        hashes: dict[str, str] | None = file.get("hashes")
+        yield Link(
+            url,
+            base_url,
+            yank_reason=yank_reason,
+            requires_python=requires_python,
+            dist_info_metadata=dist_info_metadata,
+            hashes=hashes,
         )
 
 
@@ -74,31 +120,33 @@ def collect_links_from_location(
                 for child in path.iterdir():
                     file_url = path_to_url(str(child))
                     if _is_html_file(file_url):
-                        yield from _collect_links_from_html(session, Link(file_url))
+                        yield from _collect_links_from_index(session, Link(file_url))
                     else:
                         yield Link(file_url)
             else:
                 index_html = Link(path_to_url(path.joinpath("index.html").as_posix()))
-                yield from _collect_links_from_html(session, index_html)
+                yield from _collect_links_from_index(session, index_html)
         else:
-            yield from _collect_links_from_html(session, location)
+            yield from _collect_links_from_index(session, location)
 
     else:
-        yield from _collect_links_from_html(session, location)
+        yield from _collect_links_from_index(session, location)
 
 
 @functools.lru_cache(maxsize=None)
-def fetch_page(session: PyPISession, location: Link) -> HTMLPage:
+def fetch_page(session: PyPISession, location: Link) -> IndexPage:
     if location.is_vcs:
         raise LinkCollectError("It is a VCS link.")
     resp = _get_html_response(session, location)
     from_cache = getattr(resp, "from_cache", False)
     cache_text = " (from cache)" if from_cache else ""
     logger.debug("Fetching HTML page %s%s", location.redacted, cache_text)
-    return HTMLPage(Link(resp.url), resp.text)
+    return IndexPage(
+        Link(resp.url), resp.content, resp.encoding, resp.headers["Content-Type"]
+    )
 
 
-def _collect_links_from_html(session: PyPISession, location: Link) -> Iterable[Link]:
+def _collect_links_from_index(session: PyPISession, location: Link) -> Iterable[Link]:
     if not session.is_secure_origin(location):
         return []
     try:
@@ -107,7 +155,11 @@ def _collect_links_from_html(session: PyPISession, location: Link) -> Iterable[L
         logger.warning("Failed to collect links from %s: %s", location.redacted, e)
         return []
     else:
-        return parse_html_page(page)
+        content_type_l = page.content_type.lower()
+        if content_type_l.startswith("application/vnd.pypi.simple.v1+json"):
+            return parse_json_response(page)
+        else:
+            return parse_html_page(page)
 
 
 def _is_html_file(file_url: str) -> bool:
@@ -116,20 +168,31 @@ def _is_html_file(file_url: str) -> bool:
 
 def _get_html_response(session: PyPISession, location: Link) -> Response:
     if is_archive_file(location.filename):
-        # Send a HEAD request to ensure the file is an HTML file to avoid downloading
-        # a large file.
-        _ensure_html_response(session, location)
+        # If the URL looks like a file, send a HEAD request to ensure
+        # the link is an HTML page to avoid downloading a large file.
+        _ensure_index_response(session, location)
 
     resp = session.get(
         location.normalized,
-        headers={"Accept": "text/html", "Cache-Control": "max-age=0"},
+        headers={
+            "Accept": ", ".join(
+                [
+                    "application/vnd.pypi.simple.v1+json",
+                    "application/vnd.pypi.simple.v1+html; q=0.1",
+                    "text/html; q=0.01",
+                ]
+            ),
+            # Don't cache the /simple/{package} page, to ensure it gets updated
+            # immediately when a new release is uploaded.
+            "Cache-Control": "max-age=0",
+        },
     )
     _check_for_status(resp)
-    _ensure_html_type(resp)
+    _ensure_index_content_type(resp)
     return resp
 
 
-def _ensure_html_response(session: PyPISession, location: Link) -> None:
+def _ensure_index_response(session: PyPISession, location: Link) -> None:
     if location.parsed.scheme not in {"http", "https"}:
         raise LinkCollectError(
             "NotHTTP: the file looks like an archive but its content-type "
@@ -138,7 +201,7 @@ def _ensure_html_response(session: PyPISession, location: Link) -> None:
 
     resp = session.head(location.url)
     _check_for_status(resp)
-    _ensure_html_type(resp)
+    _ensure_index_content_type(resp)
 
 
 def _check_for_status(resp: Response) -> None:
@@ -156,10 +219,14 @@ def _check_for_status(resp: Response) -> None:
         raise LinkCollectError(f"Server Error({resp.status_code}): {reason}")
 
 
-def _ensure_html_type(resp: Response) -> None:
-    content_type = resp.headers.get("content-type", "").lower()
-    if not content_type.startswith("text/html"):
-        raise LinkCollectError(
-            f"NotHTML: only HTML is supported but its content-type "
-            f"is {content_type}."
-        )
+def _ensure_index_content_type(resp: Response) -> None:
+    content_type = resp.headers.get("Content-Type", "Unknown")
+
+    content_type_l = content_type.lower()
+    if content_type_l.startswith(SUPPORTED_CONTENT_TYPES):
+        return
+
+    raise LinkCollectError(
+        f"Content-Type unsupported: {content_type}. "
+        f"The only supported are {', '.join(SUPPORTED_CONTENT_TYPES)}."
+    )
