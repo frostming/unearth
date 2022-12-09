@@ -88,7 +88,7 @@ def parse_json_response(page: IndexPage) -> Iterable[Link]:
             continue
         url = parse.urljoin(base_url, url)
         requires_python: str | None = file.get("requires-python")
-        yank_reason: str | None = file.get("yanked")
+        yank_reason: str | None = file.get("yanked") or None
         dist_info_metadata: bool | dict[str, str] | None = file.get(
             "dist-info-metadata"
         )

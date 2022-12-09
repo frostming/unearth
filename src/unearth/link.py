@@ -64,6 +64,9 @@ class Link:
             "comes_from": self.comes_from,
             "yank_reason": self.yank_reason,
             "requires_python": self.requires_python,
+            "metadata": self.dist_info_link.url_without_fragment
+            if self.dist_info_link
+            else None,
         }
 
     def __ident(self) -> tuple:
