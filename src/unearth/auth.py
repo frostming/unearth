@@ -19,7 +19,7 @@ except ModuleNotFoundError:
 
 AuthInfo = Tuple[str, str]
 MaybeAuth = Optional[Tuple[str, Optional[str]]]
-logger = logging.getLogger(__package__)
+logger = logging.getLogger(__name__)
 
 
 def get_keyring_auth(url: str | None, username: str | None) -> AuthInfo | None:

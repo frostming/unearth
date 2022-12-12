@@ -19,7 +19,7 @@ from unearth.auth import MultiDomainBasicAuth
 from unearth.link import Link
 from unearth.utils import build_url_from_netloc, parse_netloc
 
-logger = logging.getLogger(__package__)
+logger = logging.getLogger(__name__)
 
 DEFAULT_MAX_RETRIES = 5
 DEFAULT_SECURE_ORIGINS = [

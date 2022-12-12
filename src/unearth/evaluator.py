@@ -23,7 +23,7 @@ from unearth.link import Link
 from unearth.pep425tags import get_supported
 from unearth.utils import ARCHIVE_EXTENSIONS, splitext, strip_extras
 
-logger = logging.getLogger(__package__)
+logger = logging.getLogger(__name__)
 
 
 def is_equality_specifier(specifier: SpecifierSet) -> bool:

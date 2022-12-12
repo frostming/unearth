@@ -12,7 +12,7 @@ from unearth.errors import UnpackError, URLError, VCSBackendError
 from unearth.link import Link
 from unearth.utils import compare_urls
 
-logger = logging.getLogger(__package__.split(".")[0])
+logger = logging.getLogger(__name__)
 
 
 class HiddenText:

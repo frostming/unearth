@@ -10,7 +10,7 @@ from unearth.link import Link
 from unearth.utils import add_ssh_scheme_to_git_uri, display_path, path_to_url
 from unearth.vcs.base import HiddenText, VersionControl, vcs_support
 
-logger = logging.getLogger(__package__.split(".")[0])
+logger = logging.getLogger(__name__)
 
 
 @vcs_support.register

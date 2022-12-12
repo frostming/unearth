@@ -33,7 +33,7 @@ class CLIArgs:
 
 
 def _setup_logger(verbosity: bool) -> None:
-    logger = logging.getLogger(__package__)
+    logger = logging.getLogger("unearth")
     logger.setLevel(logging.DEBUG if verbosity else logging.WARNING)
     handler = logging.StreamHandler()
     handler.setLevel(logging.DEBUG)
