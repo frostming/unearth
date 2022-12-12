@@ -20,7 +20,7 @@ SUPPORTED_CONTENT_TYPES = (
     "application/vnd.pypi.simple.v1+html",
     "application/vnd.pypi.simple.v1+json",
 )
-logger = logging.getLogger(__package__)
+logger = logging.getLogger(__name__)
 
 
 class LinkCollectError(Exception):

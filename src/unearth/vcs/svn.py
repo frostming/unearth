@@ -9,7 +9,7 @@ from unearth.errors import UnpackError
 from unearth.utils import display_path, split_auth_from_netloc
 from unearth.vcs.base import HiddenText, VersionControl, vcs_support
 
-logger = logging.getLogger(__package__.split(".")[0])
+logger = logging.getLogger(__name__)
 
 _svn_xml_url_re = re.compile('url="([^"]+)"')
 _svn_rev_re = re.compile(r'committed-rev="(\d+)"')

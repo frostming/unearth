@@ -27,7 +27,7 @@ from unearth.utils import (
 from unearth.vcs import vcs_support
 
 READ_CHUNK_SIZE = 8192
-logger = logging.getLogger(__package__)
+logger = logging.getLogger(__name__)
 
 
 def set_extracted_file_to_default_mode_plus_executable(path: str) -> None:
