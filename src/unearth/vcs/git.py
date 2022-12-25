@@ -35,8 +35,10 @@ class Git(VersionControl):
     ) -> None:
         rev_display = f" (revision: {rev})" if rev else ""
         logger.info("Cloning %s%s to %s", url, rev_display, display_path(location))
+        env = None
         if self.verbosity <= 0:
             flags: tuple[str, ...] = ("--quiet",)
+            env = {"GIT_TERMINAL_PROMPT": "0"}
         elif self.verbosity == 1:
             flags = ()
         else:
@@ -47,9 +49,10 @@ class Git(VersionControl):
             # Speeds up cloning by functioning without a complete copy of repository
             self.run_command(
                 ["clone", "--filter=blob:none", *flags, url, str(location)],
+                extra_env=env,
             )
         else:
-            self.run_command(["clone", *flags, url, str(location)])
+            self.run_command(["clone", *flags, url, str(location)], extra_env=env)
 
         if rev is not None:
             self.run_command(["checkout", "-q", rev], cwd=location)
