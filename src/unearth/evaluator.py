@@ -249,7 +249,7 @@ class Evaluator:
                     )
             self._check_hashes(link)
         except LinkMismatchError as e:
-            logger.debug("Skip link %s: %s", link, e)
+            logger.debug("Skipping link %s: %s", link, e)
             return None
         return Package(name=self.package_name, version=version, link=link)
 
@@ -272,7 +272,7 @@ def evaluate_package(
     if requirement.name:
         if canonicalize_name(package.name) != canonicalize_name(requirement.name):
             logger.debug(
-                "Skip package %s: name doesn't match %s", package, requirement.name
+                "Skipping package %s: name doesn't match %s", package, requirement.name
             )
             return False
 
@@ -281,7 +281,7 @@ def evaluate_package(
             package.version, prereleases=allow_prereleases
         ):
             logger.debug(
-                "Skip package %s: version doesn't match %s",
+                "Skipping package %s: version doesn't match %s",
                 package,
                 requirement.specifier,
             )

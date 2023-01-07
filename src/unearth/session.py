@@ -193,7 +193,7 @@ class PyPISession(Session):
             return True
 
         logger.warning(
-            "Skip %s for not being trusted, please add it to `trusted_hosts` list",
+            "Skipping %s for not being trusted, please add it to `trusted_hosts` list",
             location.redacted,
         )
         return False

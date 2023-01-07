@@ -140,7 +140,9 @@ class PackageFinder:
     def _build_find_link(self, find_link: str) -> Link:
         if os.path.exists(find_link):
             return Link.from_path(os.path.abspath(find_link))
-        return Link(find_link)
+        elif "://" in find_link:
+            return Link(find_link)
+        raise ValueError(f"Invalid find link or non-existing path: {find_link}")
 
     def _evaluate_links(
         self, links: Iterable[Link], evaluator: Evaluator
