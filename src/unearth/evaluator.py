@@ -9,7 +9,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 import packaging.requirements
-from packaging.specifiers import SpecifierSet
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.tags import Tag
 from packaging.utils import (
     InvalidWheelFilename,
@@ -150,7 +150,13 @@ class Evaluator:
         if not self.ignore_compatibility and link.requires_python:
             py_ver = self.target_python.py_ver or sys.version_info[:2]
             py_version = ".".join(str(v) for v in py_ver)
-            if not SpecifierSet(link.requires_python).contains(py_version, True):
+            try:
+                requires_python = SpecifierSet(link.requires_python)
+            except InvalidSpecifier:
+                raise LinkMismatchError(
+                    f"Invalid requires-python: {link.requires_python}"
+                )
+            if not requires_python.contains(py_version, True):
                 raise LinkMismatchError(
                     "The target python version({}) doesn't match "
                     "the requires-python specifier {}".format(
