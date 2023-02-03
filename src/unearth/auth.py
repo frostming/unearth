@@ -49,12 +49,14 @@ class KeyringModuleProvider(KeyringBaseProvider):
 
     def get_auth_info(self, url: str, username: str | None) -> AuthInfo | None:
         if hasattr(self.keyring, "get_credential"):
+            logger.debug("Getting credentials from keyring for url: %s", url)
             cred = self.keyring.get_credential(url, username)
             if cred is not None:
                 return cred.username, cred.password
 
         if username is None:
             username = "__token__"
+        logger.debug("Getting password from keyring for: %s@%s", username, url)
         password = self.keyring.get_password(url, username)
         if password:
             return username, password
@@ -70,6 +72,7 @@ class KeyringCliProvider(KeyringBaseProvider):
 
     def get_auth_info(self, url: str, username: str | None) -> AuthInfo | None:
         if username is not None:
+            logger.debug("Getting password from keyring CLI for %s@%s", username, url)
             password = self._get_password(url, username)
             if password is not None:
                 return username, password
