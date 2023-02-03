@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import abc
 import getpass
 import logging
+import os
+import shutil
+import subprocess
 from typing import Any, Iterable, Optional, Tuple, cast
 from urllib.parse import urlparse
 
@@ -12,48 +16,131 @@ from requests.utils import get_netrc_auth
 
 from unearth.utils import split_auth_from_netloc, split_auth_from_url
 
-try:
-    import keyring  # type: ignore
-except ModuleNotFoundError:
-    keyring = None  # type: ignore[assignment]
+KEYRING_DISABLED = False
 
 AuthInfo = Tuple[str, str]
 MaybeAuth = Optional[Tuple[str, Optional[str]]]
 logger = logging.getLogger(__name__)
 
 
-def get_keyring_auth(url: str | None, username: str | None) -> AuthInfo | None:
-    """Return the tuple auth for a given url from keyring."""
-    global keyring
-    if not url or not keyring:
+class KeyringBaseProvider(metaclass=abc.ABCMeta):
+    """Base class for keyring providers."""
+
+    @abc.abstractmethod
+    def get_auth_info(self, url: str, username: str | None) -> AuthInfo | None:
+        """Return the password for the given url and username.
+        The username can be None.
+        """
+        ...
+
+    @abc.abstractmethod
+    def save_auth_info(self, url: str, username: str, password: str) -> None:
+        """Set the password for the given url and username."""
+        ...
+
+
+class KeyringModuleProvider(KeyringBaseProvider):
+    """Keyring provider that uses the keyring module."""
+
+    def __init__(self) -> None:
+        import keyring
+
+        self.keyring = keyring
+
+    def get_auth_info(self, url: str, username: str | None) -> AuthInfo | None:
+        if hasattr(self.keyring, "get_credential"):
+            cred = self.keyring.get_credential(url, username)
+            if cred is not None:
+                return cred.username, cred.password
+
+        if username is None:
+            username = "__token__"
+        password = self.keyring.get_password(url, username)
+        if password:
+            return username, password
+        return None
+
+    def save_auth_info(self, url: str, username: str, password: str) -> None:
+        self.keyring.set_password(url, username, password)
+
+
+class KeyringCliProvider(KeyringBaseProvider):
+    def __init__(self, cmd: str) -> None:
+        self.keyring = cmd
+
+    def get_auth_info(self, url: str, username: str | None) -> AuthInfo | None:
+        if username is not None:
+            password = self._get_password(url, username)
+            if password is not None:
+                return username, password
+        return None
+
+    def save_auth_info(self, url: str, username: str, password: str) -> None:
+        return self._set_password(url, username, password)
+
+    def _get_password(self, service_name: str, username: str) -> str | None:
+        """Mirror the implementation of keyring.get_password using cli"""
+        cmd = [self.keyring, "get", service_name, username]
+        env = dict(os.environ, PYTHONIOENCODING="utf-8")
+        res = subprocess.run(
+            cmd, stdin=subprocess.DEVNULL, capture_output=True, env=env
+        )
+        if res.returncode:
+            return None
+        return res.stdout.decode("utf-8").strip(os.linesep)
+
+    def _set_password(self, service_name: str, username: str, password: str) -> None:
+        """Mirror the implementation of keyring.set_password using cli"""
+        if self.keyring is None:
+            return None
+
+        cmd = [self.keyring, "set", service_name, username]
+        input_ = (password + os.linesep).encode("utf-8")
+        env = dict(os.environ, PYTHONIOENCODING="utf-8")
+        subprocess.run(cmd, input=input_, env=env, check=True)
+        return None
+
+
+def get_keyring_provider() -> KeyringBaseProvider | None:
+    """Return the keyring provider to use."""
+    if KEYRING_DISABLED:
         return None
 
     try:
-        try:
-            get_credential = keyring.get_credential
-        except AttributeError:
-            pass
-        else:
-            logger.debug("Getting credentials from keyring for %s", url)
-            cred = get_credential(url, username)
-            if cred is not None:
-                return cred.username, cred.password
-            return None
+        return KeyringModuleProvider()
+    except ImportError:
+        pass
+    except Exception as exc:
+        logger.warning(
+            "Importing keyring failed: %s, trying to find a keyring executable.",
+            exc,
+        )
 
-        if not username:
-            username = "__token__"
-        logger.debug("Getting password from keyring for %s@%s", username, url)
-        password = keyring.get_password(url, username)
-        if password:
-            return username, password
+    keyring = shutil.which("keyring")
+    if keyring is not None:
+        return KeyringCliProvider(keyring)
 
+    return None
+
+
+def get_keyring_auth(url: str | None, username: str | None) -> AuthInfo | None:
+    """Return the tuple auth for a given url from keyring."""
+    if not url:
+        return None
+
+    keyring = get_keyring_provider()
+    if keyring is None:
+        return None
+    try:
+        return keyring.get_auth_info(url, username)
     except Exception as exc:
         logger.warning(
             "Keyring is skipped due to an exception: %s",
             str(exc),
         )
-        keyring = None  # type: ignore[assignment]
-    return None
+        global KEYRING_DISABLED
+        KEYRING_DISABLED = True
+        return None
 
 
 class MultiDomainBasicAuth(AuthBase):
@@ -190,7 +277,7 @@ class MultiDomainBasicAuth(AuthBase):
 
     # Factored out to allow for easy patching in tests
     def _should_save_password_to_keyring(self) -> bool:
-        if not keyring:
+        if get_keyring_provider() is None:
             return False
         return input("Save credentials to keyring [y/N]: ") == "y"
 
@@ -260,15 +347,14 @@ class MultiDomainBasicAuth(AuthBase):
 
     def save_credentials(self, resp: Response, **kwargs: Any) -> None:
         """Response callback to save credentials on success."""
+        keyring = get_keyring_provider()
         assert keyring is not None, "should never reach here without keyring"
-        if not keyring:
-            return
 
         creds = self._credentials_to_save
         self._credentials_to_save = None
         if creds and resp.status_code < 400:
             try:
                 logger.info("Saving credentials to keyring")
-                keyring.set_password(*creds)
+                keyring.save_auth_info(*creds)
             except Exception:
                 logger.exception("Failed to save credentials")
