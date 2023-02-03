@@ -43,7 +43,7 @@ class KeyringModuleProvider(KeyringBaseProvider):
     """Keyring provider that uses the keyring module."""
 
     def __init__(self) -> None:
-        import keyring
+        import keyring  # type: ignore
 
         self.keyring = keyring
 
