@@ -117,6 +117,8 @@ def cli_parser() -> argparse.ArgumentParser:
 
 
 def get_dest_for_package(dest: str, link: Link) -> str:
+    if link.is_wheel:
+        return dest
     filename = link.filename.rsplit("@", 1)[0]
     fn, _ = splitext(filename)
     return os.path.join(dest, fn)
@@ -143,15 +145,13 @@ def cli(argv: list[str] | None = None) -> None:
         matches = matches[:1]
 
     result = []
-    with tempfile.TemporaryDirectory("unearth-download-") as tempdir:
+    if args.download:
+        os.makedirs(args.download, exist_ok=True)
+    with tempfile.TemporaryDirectory("unearth-download-") as download_dir:
         for match in matches:
             data = match.as_json()
             if args.download is not None:
-                download_dir, dest = tempdir, get_dest_for_package(
-                    args.download, match.link
-                )
-                if match.link.is_wheel:
-                    download_dir = args.download
+                dest = get_dest_for_package(args.download, match.link)
                 data["local_path"] = finder.download_and_unpack(
                     match.link,
                     dest,
