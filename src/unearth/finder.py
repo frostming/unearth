@@ -165,13 +165,14 @@ class PackageFinder:
     def _sort_key(self, package: Package) -> tuple:
         """The key for sort, package with the largest value is the most preferred."""
         link = package.link
-        pri = len(self._tag_priorities)
+        pri = len(self._tag_priorities) + 1  # default priority for sdist.
         build_tag: BuildTag = ()
         prefer_binary = False
         if link.is_wheel:
             *_, build_tag, file_tags = parse_wheel_filename(link.filename)
             pri = min(
-                (self._tag_priorities.get(tag, pri) for tag in file_tags), default=pri
+                (self._tag_priorities.get(tag, pri - 1) for tag in file_tags),
+                default=pri - 1,
             )
             if self.prefer_binary:
                 prefer_binary = True
