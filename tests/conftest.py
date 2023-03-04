@@ -1,4 +1,5 @@
 """Configuration for the pytest test suite."""
+import os
 from ssl import SSLContext
 from unittest import mock
 
@@ -71,7 +72,9 @@ def pypi():
 @pytest.fixture()
 def pypi_auth(pypi):
     def check_auth(auth):
-        return auth.username == "test" and auth.password == "password"
+        return auth.username == os.getenv(
+            "PYPI_USER", "test"
+        ) and auth.password == os.getenv("PYPI_PASSWORD", "password")
 
     def unauthenticated():
         message = {"message": "Unauthenticated"}

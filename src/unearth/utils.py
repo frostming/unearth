@@ -126,8 +126,8 @@ def split_auth_from_netloc(netloc: str) -> tuple[tuple[str, str | None] | None, 
     auth, has_auth, host = netloc.rpartition("@")
     if not has_auth:
         return None, host
-    user, _, password = auth.partition(":")
-    return (parse.unquote(user), parse.unquote(password) if password else None), host
+    user, has_pass, password = auth.partition(":")
+    return (parse.unquote(user), parse.unquote(password) if has_pass else None), host
 
 
 @functools.lru_cache(maxsize=128)

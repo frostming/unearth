@@ -57,7 +57,17 @@ def test_session_auth_from_source_urls(pypi_auth, session):
     assert not any(r.status_code == 401 for r in resp.history)
 
 
-def test_session_auth_from_prompting(pypi_auth, session, monkeypatch):
+def test_session_auth_with_empty_password(pypi_auth, session, monkeypatch):
+    monkeypatch.setenv("PYPI_PASSWORD", "")
+    session.auth = MultiDomainBasicAuth(
+        prompting=False, index_urls=["https://test:@pypi.org/simple"]
+    )
+    resp = session.get("https://pypi.org/simple/click")
+    assert resp.status_code == 200
+    assert not any(r.status_code == 401 for r in resp.history)
+
+
+def test_session_auth_from_prompting(pypi_auth, session):
     with mock.patch.object(
         MultiDomainBasicAuth,
         "_prompt_for_password",
