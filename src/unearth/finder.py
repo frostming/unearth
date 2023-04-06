@@ -96,19 +96,27 @@ class PackageFinder:
         self.no_binary = [canonicalize_name(name) for name in no_binary]
         self.only_binary = [canonicalize_name(name) for name in only_binary]
         self.prefer_binary = [canonicalize_name(name) for name in prefer_binary]
-        if session is None:
-            index_urls = [
-                source["url"] for source in self.sources if source["type"] == "index"
-            ]
-            session = PyPISession(index_urls=index_urls, trusted_hosts=trusted_hosts)
-            atexit.register(session.close)
-        self.session = session
+        self.trusted_hosts = trusted_hosts
+        self._session = session
         self.respect_source_order = respect_source_order
         self.verbosity = verbosity
 
         self._tag_priorities = {
             tag: i for i, tag in enumerate(self.target_python.supported_tags())
         }
+
+    @property
+    def session(self) -> PyPISession:
+        if self._session is None:
+            index_urls = [
+                source["url"] for source in self.sources if source["type"] == "index"
+            ]
+            session = PyPISession(
+                index_urls=index_urls, trusted_hosts=self.trusted_hosts
+            )
+            atexit.register(session.close)
+            self._session = session
+        return self._session
 
     def add_index_url(self, url: str) -> None:
         """Add an index URL to the finder search scope.
