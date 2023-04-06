@@ -56,15 +56,16 @@ class PackageFinder:
     Args:
         session (PyPISession|None): The session to use for the finder.
             If not provided, a temporary session will be created.
-        sources: (Iterable[dict]): The sources to find packages from.
+        index_urls (Iterable[str]): The index URLs to search for packages.
+        find_links (Iterable[str]): The links to search for packages.
         trusted_hosts: (Iterable[str]): The trusted hosts.
         target_python (TargetPython): The links must match
             the target Python
         ignore_compatibility (bool): Whether to ignore the compatibility check
         no_binary (Iterable[str]): The names of the packages to disallow wheels
         only_binary (Iterable[str]): The names of the packages to disallow non-wheels
-        prefer_binary (bool): Whether to prefer binary packages even if
-            newer sdist pacakges exist.
+        prefer_binary (Iterable[str]): The names of the packages to prefer binary
+            distributions even if newer sdist pacakges exist.
         respect_source_order (bool): If True, packages from the source coming earlier
             are more preferred, even if they have lower versions.
         verbosity (int): The verbosity level.
