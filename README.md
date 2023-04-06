@@ -43,7 +43,7 @@ Get the best matching candidate for a requirement:
 
 ```python
 >>> from unearth import PackageFinder
->>> finder = PackageFinder(index_urls=['https://pypi.org/simple/'])
+>>> finder = PackageFinder(sources=[{'url': 'https://pypi.org/simple/', 'type': 'index'}])
 >>> result = finder.find_best_match("flask>=2")
 >>> result.best_candidate
 Package(name='flask', version='2.1.2', link=<Link https://files.pythonhosted.org/packages/ba/76/e9580e494eaf6f09710b0f3b9000c9c0363e44af5390be32bb0394165853/Flask-2.1.2-py3-none-any.whl#sha256=fad5b446feb0d6db6aec0c3184d16a8c1f6c3e464b511649c8918a9be100b4fe (from https://pypi.org/simple/flask)>)

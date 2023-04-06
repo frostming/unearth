@@ -57,8 +57,7 @@ class PackageFinder:
     Args:
         session (PyPISession|None): The session to use for the finder.
             If not provided, a temporary session will be created.
-        index_urls: (Iterable[str]): The urls of the index pages.
-        find_links: (Iterable[str]): The urls or paths of the find links.
+        sources: (Iterable[dict]): The sources to find packages from.
         trusted_hosts: (Iterable[str]): The trusted hosts.
         target_python (TargetPython): The links must match
             the target Python
