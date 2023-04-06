@@ -6,6 +6,7 @@ import functools
 import itertools
 import os
 import pathlib
+import warnings
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Iterable, NamedTuple, Sequence, TypedDict
 from urllib.parse import urljoin
@@ -73,7 +74,10 @@ class PackageFinder:
     def __init__(
         self,
         session: PyPISession | None = None,
+        *,
         sources: Iterable[Source] = (),
+        index_urls: Iterable[str] = (),
+        find_links: Iterable[str] = (),
         trusted_hosts: Iterable[str] = (),
         target_python: TargetPython | None = None,
         ignore_compatibility: bool = False,
@@ -84,6 +88,22 @@ class PackageFinder:
         verbosity: int = 0,
     ) -> None:
         self.sources = list(sources)
+        if index_urls:
+            warnings.warn(
+                "index_urls is deprecated, use sources instead",
+                DeprecationWarning,
+                stacklevel=1,
+            )
+            self.sources.extend({"url": url, "type": "index"} for url in index_urls)
+        if find_links:
+            warnings.warn(
+                "find_links is deprecated, use sources instead",
+                DeprecationWarning,
+                stacklevel=1,
+            )
+            self.sources.extend(
+                {"url": url, "type": "find_links"} for url in find_links
+            )
         self.target_python = target_python or TargetPython()
         self.ignore_compatibility = ignore_compatibility
         self.no_binary = [canonicalize_name(name) for name in no_binary]

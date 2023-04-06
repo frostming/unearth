@@ -36,14 +36,14 @@ DEFAULT_SOURCE = {"url": "https://pypi.org/simple/", "type": "index"}
 )
 def test_find_most_matching_wheel(session, target_python, filename):
     finder = PackageFinder(
-        session, sources=[DEFAULT_SOURCE], target_python=target_python
+        session=session, sources=[DEFAULT_SOURCE], target_python=target_python
     )
     assert finder.find_best_match("black").best.link.filename == filename
 
 
 def test_find_package_with_format_control(session):
     finder = PackageFinder(
-        session,
+        session=session,
         sources=[DEFAULT_SOURCE],
         target_python=TargetPython(
             (3, 9), abis=["cp39"], impl="cp", platforms=["win_amd64"]
@@ -60,7 +60,7 @@ def test_find_package_with_format_control(session):
 
 def test_find_package_no_binary_for_all(session):
     finder = PackageFinder(
-        session,
+        session=session,
         sources=[DEFAULT_SOURCE],
         target_python=TargetPython(
             (3, 9), abis=["cp39"], impl="cp", platforms=["win_amd64"]
@@ -73,7 +73,7 @@ def test_find_package_no_binary_for_all(session):
 
 def test_find_package_prefer_binary(session):
     finder = PackageFinder(
-        session,
+        session=session,
         sources=[DEFAULT_SOURCE],
         target_python=TargetPython(
             (3, 9), abis=["cp39"], impl="cp", platforms=["win_amd64"]
@@ -88,7 +88,7 @@ def test_find_package_prefer_binary(session):
 
 def test_find_package_with_hash_allowance(session):
     finder = PackageFinder(
-        session,
+        session=session,
         sources=[DEFAULT_SOURCE],
         target_python=TargetPython(
             (3, 9), abis=["cp39"], impl="cp", platforms=["win_amd64"]
@@ -110,7 +110,7 @@ def test_find_package_with_hash_allowance(session):
 @pytest.mark.parametrize("ignore_compat", [True, False])
 def test_find_package_ignoring_compatibility(session, ignore_compat):
     finder = PackageFinder(
-        session,
+        session=session,
         sources=[DEFAULT_SOURCE],
         target_python=TargetPython(
             (3, 9), abis=["cp39"], impl="cp", platforms=["win_amd64"]
@@ -123,7 +123,7 @@ def test_find_package_ignoring_compatibility(session, ignore_compat):
 
 def test_find_package_with_version_specifier(session):
     finder = PackageFinder(
-        session,
+        session=session,
         sources=[DEFAULT_SOURCE],
         ignore_compatibility=True,
     )
@@ -136,7 +136,7 @@ def test_find_package_with_version_specifier(session):
 
 def test_find_package_allowing_prereleases(session):
     finder = PackageFinder(
-        session,
+        session=session,
         sources=[DEFAULT_SOURCE],
         ignore_compatibility=True,
     )
@@ -154,7 +154,7 @@ def test_find_package_allowing_prereleases(session):
 
 def test_find_requirement_with_link(session):
     finder = PackageFinder(
-        session,
+        session=session,
         sources=[DEFAULT_SOURCE],
         ignore_compatibility=True,
     )
@@ -168,7 +168,7 @@ def test_find_requirement_with_link(session):
 def test_find_requirement_preference(session, fixtures_dir):
     find_link = Link.from_path(fixtures_dir / "findlinks/index.html")
     finder = PackageFinder(
-        session,
+        session=session,
         sources=[DEFAULT_SOURCE, {"url": find_link.normalized, "type": "find_links"}],
         ignore_compatibility=True,
     )
@@ -180,7 +180,7 @@ def test_find_requirement_preference(session, fixtures_dir):
 def test_find_requirement_preference_respect_source_order(session, fixtures_dir):
     find_link = Link.from_path(fixtures_dir / "findlinks/index.html")
     finder = PackageFinder(
-        session,
+        session=session,
         sources=[DEFAULT_SOURCE, {"url": find_link.normalized, "type": "find_links"}],
         ignore_compatibility=True,
         respect_source_order=True,
