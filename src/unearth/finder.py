@@ -8,7 +8,7 @@ import os
 import pathlib
 import warnings
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Iterable, NamedTuple, Sequence, TypedDict
+from typing import TYPE_CHECKING, Iterable, NamedTuple, Sequence
 from urllib.parse import urljoin
 
 import packaging.requirements
@@ -30,6 +30,7 @@ from unearth.session import PyPISession
 from unearth.utils import LazySequence
 
 if TYPE_CHECKING:
+    from typing import TypedDict
 
     class Source(TypedDict):
         url: str
