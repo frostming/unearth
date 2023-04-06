@@ -12,20 +12,17 @@ from typing import cast
 
 from packaging.requirements import Requirement
 
-from unearth.finder import PackageFinder, Source
+from unearth.finder import PackageFinder
 from unearth.link import Link
 from unearth.utils import splitext
-
-
-def make_source(value: str, type: str) -> Source:
-    return {"url": value, "type": type}
 
 
 @dataclass(frozen=True)
 class CLIArgs:
     requirement: Requirement
     verbose: bool
-    sources: list[Source]
+    index_urls: list[str]
+    find_links: list[str]
     trusted_hosts: list[str]
     no_binary: bool
     only_binary: bool
@@ -60,19 +57,17 @@ def cli_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--index-url",
         "-i",
-        dest="sources",
         metavar="URL",
+        dest="index_urls",
         action="append",
-        type=lambda x: make_source(x, "index"),
         help="(Multiple)(PEP 503)Simple Index URLs.",
     )
     parser.add_argument(
         "--find-link",
         "-f",
-        dest="sources",
+        dest="find_links",
         metavar="LOCATION",
         action="append",
-        type=lambda x: make_source(x, "find_links"),
         help="(Multiple)URLs or locations to find links from.",
     )
     parser.add_argument(
@@ -131,7 +126,8 @@ def cli(argv: list[str] | None = None) -> None:
     _setup_logger(args.verbose)
     name = args.requirement.name
     finder = PackageFinder(
-        sources=args.sources or [{"url": "https://pypi.org/simple/", "type": "index"}],
+        index_urls=args.index_urls or ["https://pypi.org/simple/"],
+        find_links=args.find_links or [],
         trusted_hosts=args.trusted_hosts or [],
         no_binary=[name] if args.no_binary else [],
         only_binary=[name] if args.only_binary else [],

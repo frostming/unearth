@@ -6,7 +6,6 @@ import functools
 import itertools
 import os
 import pathlib
-import warnings
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Iterable, NamedTuple, Sequence
 from urllib.parse import urljoin
@@ -75,7 +74,6 @@ class PackageFinder:
         self,
         session: PyPISession | None = None,
         *,
-        sources: Iterable[Source] = (),
         index_urls: Iterable[str] = (),
         find_links: Iterable[str] = (),
         trusted_hosts: Iterable[str] = (),
@@ -87,23 +85,11 @@ class PackageFinder:
         respect_source_order: bool = False,
         verbosity: int = 0,
     ) -> None:
-        self.sources = list(sources)
-        if index_urls:
-            warnings.warn(
-                "index_urls is deprecated, use sources instead",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-            self.sources.extend({"url": url, "type": "index"} for url in index_urls)
-        if find_links:
-            warnings.warn(
-                "find_links is deprecated, use sources instead",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-            self.sources.extend(
-                {"url": url, "type": "find_links"} for url in find_links
-            )
+        self.sources: list[Source] = []
+        for url in index_urls:
+            self.add_index_url(url)
+        for url in find_links:
+            self.add_find_links(url)
         self.target_python = target_python or TargetPython()
         self.ignore_compatibility = ignore_compatibility
         self.no_binary = [canonicalize_name(name) for name in no_binary]
@@ -122,6 +108,22 @@ class PackageFinder:
         self._tag_priorities = {
             tag: i for i, tag in enumerate(self.target_python.supported_tags())
         }
+
+    def add_index_url(self, url: str) -> None:
+        """Add an index URL to the finder search scope.
+
+        Args:
+            url (str): The index URL to add.
+        """
+        self.sources.append({"url": url, "type": "index"})
+
+    def add_find_links(self, url: str) -> None:
+        """Add a find links URL to the finder search scope.
+
+        Args:
+            url (str): The find links URL to add.
+        """
+        self.sources.append({"url": url, "type": "find_links"})
 
     def build_evaluator(
         self,
