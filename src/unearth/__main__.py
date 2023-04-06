@@ -24,8 +24,8 @@ class CLIArgs:
     index_urls: list[str]
     find_links: list[str]
     trusted_hosts: list[str]
-    no_binary: list[str]
-    only_binary: list[str]
+    no_binary: bool
+    only_binary: bool
     prefer_binary: bool
     all: bool
     link_only: bool
@@ -57,8 +57,8 @@ def cli_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--index-url",
         "-i",
-        dest="index_urls",
         metavar="URL",
+        dest="index_urls",
         action="append",
         help="(Multiple)(PEP 503)Simple Index URLs.",
     )
@@ -79,17 +79,13 @@ def cli_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--no-binary",
-        action="append",
-        metavar="PACKAGE",
-        help="(Multiple)Specify package names to exclude binary results, "
-        "or `:all:` to exclude all binary results.",
+        action="store_true",
+        help="Exclude binary packages from the results.",
     )
     parser.add_argument(
         "--only-binary",
-        action="append",
-        metavar="PACKAGE",
-        help="(Multiple)Specify package names to only allow binary results, "
-        "or `:all:` to enforce binary results for all packages.",
+        action="store_true",
+        help="Only include binary packages in the results.",
     )
     parser.add_argument(
         "--prefer-binary",
@@ -128,16 +124,17 @@ def cli(argv: list[str] | None = None) -> None:
     parser = cli_parser()
     args = cast(CLIArgs, parser.parse_args(argv))
     _setup_logger(args.verbose)
+    name = args.requirement.name
     finder = PackageFinder(
-        index_urls=args.index_urls or ["https://pypi.org/simple"],
+        index_urls=args.index_urls or ["https://pypi.org/simple/"],
         find_links=args.find_links or [],
         trusted_hosts=args.trusted_hosts or [],
-        no_binary=args.no_binary or [],
-        only_binary=args.only_binary or [],
-        prefer_binary=args.prefer_binary,
+        no_binary=[name] if args.no_binary else [],
+        only_binary=[name] if args.only_binary else [],
+        prefer_binary=[name] if args.prefer_binary else [],
         verbosity=int(args.verbose),
     )
-    matches = finder.find_matches(args.requirement)
+    matches = list(finder.find_matches(args.requirement))
     if not matches:
         print("No matches are found.", file=sys.stderr)
         sys.exit(1)

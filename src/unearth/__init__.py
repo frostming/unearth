@@ -7,12 +7,13 @@
 """
 from unearth.errors import HashMismatchError, UnpackError, URLError, VCSBackendError
 from unearth.evaluator import Package, TargetPython
-from unearth.finder import BestMatch, PackageFinder
+from unearth.finder import BestMatch, PackageFinder, Source
 from unearth.link import Link
 from unearth.vcs import vcs_support
 
 __all__ = [
     "Link",
+    "Source",
     "Package",
     "URLError",
     "BestMatch",

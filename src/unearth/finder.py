@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import atexit
 import functools
+import itertools
 import os
 import pathlib
 from tempfile import TemporaryDirectory
-from typing import Iterable, NamedTuple
+from typing import TYPE_CHECKING, Iterable, NamedTuple, Sequence
 from urllib.parse import urljoin
 
 import packaging.requirements
@@ -25,7 +26,17 @@ from unearth.evaluator import (
 from unearth.link import Link
 from unearth.preparer import unpack_link
 from unearth.session import PyPISession
-from unearth.utils import split_auth_from_url
+from unearth.utils import LazySequence
+
+if TYPE_CHECKING:
+    from typing import TypedDict
+
+    class Source(TypedDict):
+        url: str
+        type: str
+
+else:
+    Source = dict
 
 
 class BestMatch(NamedTuple):
@@ -34,9 +45,9 @@ class BestMatch(NamedTuple):
     #: The best matching package, or None if no match was found.
     best: Package | None
     #: The applicable packages, excluding those with unmatching versions.
-    applicable: list[Package]
+    applicable: Sequence[Package]
     #: All candidates found for the requirement.
-    candidates: list[Package]
+    candidates: Sequence[Package]
 
 
 class PackageFinder:
@@ -45,16 +56,16 @@ class PackageFinder:
     Args:
         session (PyPISession|None): The session to use for the finder.
             If not provided, a temporary session will be created.
-        index_urls: (Iterable[str]): The urls of the index pages.
-        find_links: (Iterable[str]): The urls or paths of the find links.
+        index_urls (Iterable[str]): The index URLs to search for packages.
+        find_links (Iterable[str]): The links to search for packages.
         trusted_hosts: (Iterable[str]): The trusted hosts.
         target_python (TargetPython): The links must match
             the target Python
         ignore_compatibility (bool): Whether to ignore the compatibility check
         no_binary (Iterable[str]): The names of the packages to disallow wheels
         only_binary (Iterable[str]): The names of the packages to disallow non-wheels
-        prefer_binary (bool): Whether to prefer binary packages even if
-            newer sdist pacakges exist.
+        prefer_binary (Iterable[str]): The names of the packages to prefer binary
+            distributions even if newer sdist pacakges exist.
         respect_source_order (bool): If True, packages from the source coming earlier
             are more preferred, even if they have lower versions.
         verbosity (int): The verbosity level.
@@ -63,6 +74,7 @@ class PackageFinder:
     def __init__(
         self,
         session: PyPISession | None = None,
+        *,
         index_urls: Iterable[str] = (),
         find_links: Iterable[str] = (),
         trusted_hosts: Iterable[str] = (),
@@ -70,33 +82,57 @@ class PackageFinder:
         ignore_compatibility: bool = False,
         no_binary: Iterable[str] = (),
         only_binary: Iterable[str] = (),
-        prefer_binary: bool = False,
+        prefer_binary: Iterable[str] = (),
         respect_source_order: bool = False,
         verbosity: int = 0,
     ) -> None:
-        self.index_urls = list(index_urls)
-        self.find_links = list(find_links)
+        self.sources: list[Source] = []
+        for url in index_urls:
+            self.add_index_url(url)
+        for url in find_links:
+            self.add_find_links(url)
         self.target_python = target_python or TargetPython()
         self.ignore_compatibility = ignore_compatibility
         self.no_binary = [canonicalize_name(name) for name in no_binary]
         self.only_binary = [canonicalize_name(name) for name in only_binary]
-        self.prefer_binary = prefer_binary
-        if session is None:
-            session = PyPISession(
-                index_urls=self.index_urls, trusted_hosts=trusted_hosts
-            )
-            atexit.register(session.close)
-        self.session = session
+        self.prefer_binary = [canonicalize_name(name) for name in prefer_binary]
+        self.trusted_hosts = trusted_hosts
+        self._session = session
         self.respect_source_order = respect_source_order
         self.verbosity = verbosity
 
         self._tag_priorities = {
             tag: i for i, tag in enumerate(self.target_python.supported_tags())
         }
-        # Index pages are preferred over find links.
-        self._source_order = [
-            split_auth_from_url(url)[1] for url in (self.index_urls + self.find_links)
-        ]
+
+    @property
+    def session(self) -> PyPISession:
+        if self._session is None:
+            index_urls = [
+                source["url"] for source in self.sources if source["type"] == "index"
+            ]
+            session = PyPISession(
+                index_urls=index_urls, trusted_hosts=self.trusted_hosts
+            )
+            atexit.register(session.close)
+            self._session = session
+        return self._session
+
+    def add_index_url(self, url: str) -> None:
+        """Add an index URL to the finder search scope.
+
+        Args:
+            url (str): The index URL to add.
+        """
+        self.sources.append({"url": url, "type": "index"})
+
+    def add_find_links(self, url: str) -> None:
+        """Add a find links URL to the finder search scope.
+
+        Args:
+            url (str): The find links URL to add.
+        """
+        self.sources.append({"url": url, "type": "find_links"})
 
     def build_evaluator(
         self,
@@ -174,24 +210,12 @@ class PackageFinder:
                 (self._tag_priorities.get(tag, pri - 1) for tag in file_tags),
                 default=pri - 1,
             )
-            if self.prefer_binary:
+            if canonicalize_name(package.name) in self.prefer_binary:
                 prefer_binary = True
-        comes_from = package.link.comes_from
-        source_index = len(self._source_order)
 
-        if comes_from is not None and self.respect_source_order:
-            source_index = next(
-                (
-                    i
-                    for i, url in enumerate(self._source_order)
-                    if comes_from.startswith(url)
-                ),
-                source_index,
-            )
         return (
             -int(link.is_yanked),
             int(prefer_binary),
-            -source_index,
             parse_version(package.version) if package.version is not None else 0,
             -pri,
             build_tag,
@@ -211,26 +235,39 @@ class PackageFinder:
             hashes (dict[str, list[str]]|None): The hashes to filter on.
 
         Returns:
-            Iterable[Package]: The packages with the given name
+            Iterable[Package]: The packages with the given name, sorted by best match.
         """
         evaluator = self.build_evaluator(package_name, allow_yanked, hashes)
-        for index_url in self.index_urls:
-            package_link = self._build_index_page_link(index_url, package_name)
-            yield from self._evaluate_links(
-                collect_links_from_location(self.session, package_link), evaluator
-            )
-        for find_link in self.find_links:
-            link = self._build_find_link(find_link)
-            yield from self._evaluate_links(
-                collect_links_from_location(self.session, link, expand=True), evaluator
-            )
+
+        def find_one_source(source: Source) -> Iterable[Package]:
+            if source["type"] == "index":
+                link = self._build_index_page_link(source["url"], package_name)
+                result = self._evaluate_links(
+                    collect_links_from_location(self.session, link), evaluator
+                )
+            else:
+                link = self._build_find_link(source["url"])
+                result = self._evaluate_links(
+                    collect_links_from_location(self.session, link, expand=True),
+                    evaluator,
+                )
+            if self.respect_source_order:
+                # Sort the result within the individual source.
+                return sorted(result, key=self._sort_key, reverse=True)
+            return result
+
+        all_packages = itertools.chain.from_iterable(map(find_one_source, self.sources))
+        if self.respect_source_order:
+            return all_packages
+        # Otherwise, sort the result across all sources.
+        return sorted(all_packages, key=self._sort_key, reverse=True)
 
     def find_all_packages(
         self,
         package_name: str,
         allow_yanked: bool = False,
         hashes: dict[str, list[str]] | None = None,
-    ) -> list[Package]:
+    ) -> Sequence[Package]:
         """Find all packages with the given package name, best match first.
 
         Args:
@@ -239,13 +276,9 @@ class PackageFinder:
             hashes (dict[str, list[str]]|None): The hashes to filter on.
 
         Returns:
-            list[Package]: The packages list sorted by best match
+            Sequence[Package]: The packages list sorted by best match
         """
-        return sorted(
-            self._find_packages(package_name, allow_yanked, hashes),
-            key=self._sort_key,
-            reverse=True,
-        )
+        return LazySequence(self._find_packages(package_name, allow_yanked, hashes))
 
     def _find_packages_from_requirement(
         self,
@@ -266,7 +299,7 @@ class PackageFinder:
         allow_yanked: bool | None = None,
         allow_prereleases: bool | None = None,
         hashes: dict[str, list[str]] | None = None,
-    ) -> list[Package]:
+    ) -> Sequence[Package]:
         """Find all packages matching the given requirement, best match first.
 
         Args:
@@ -279,18 +312,16 @@ class PackageFinder:
             hashes (dict[str, list[str]]|None): The hashes to filter on.
 
         Returns:
-            list[Package]: The packages list sorted by best match
+            Sequence[Package]: The packages sorted by best match
         """
         if isinstance(requirement, str):
             requirement = packaging.requirements.Requirement(requirement)
-        return sorted(
+        return LazySequence(
             self._evaluate_packages(
                 self._find_packages_from_requirement(requirement, allow_yanked, hashes),
                 requirement,
                 allow_prereleases,
-            ),
-            key=self._sort_key,
-            reverse=True,
+            )
         )
 
     def find_best_match(
@@ -316,13 +347,14 @@ class PackageFinder:
         """
         if isinstance(requirement, str):
             requirement = packaging.requirements.Requirement(requirement)
-        candidates = list(
-            self._find_packages_from_requirement(requirement, allow_yanked, hashes)
+        packages = self._find_packages_from_requirement(
+            requirement, allow_yanked, hashes
         )
-        applicable_candidates = list(
-            self._evaluate_packages(candidates, requirement, allow_prereleases)
+        candidates = LazySequence(packages)
+        applicable_candidates = LazySequence(
+            self._evaluate_packages(packages, requirement, allow_prereleases)
         )
-        best_match = max(applicable_candidates, key=self._sort_key, default=None)
+        best_match = next(iter(applicable_candidates), None)
         return BestMatch(best_match, applicable_candidates, candidates)
 
     def download_and_unpack(

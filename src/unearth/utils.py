@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import functools
+import itertools
 import os
 import sys
 import urllib.parse as parse
 from pathlib import Path
+from typing import Iterable, Iterator, Sequence, TypeVar
 from urllib.request import pathname2url, url2pathname
 
 WINDOWS = sys.platform == "win32"
@@ -182,3 +184,36 @@ def format_size(size: str) -> str:
         return f"{int_size / 1000.0:.1f} kB"
     else:
         return f"{int(int_size)} bytes"
+
+
+T = TypeVar("T", covariant=True)
+
+
+class LazySequence(Sequence[T]):
+    """A sequence that is lazily evaluated."""
+
+    def __init__(self, data: Iterable[T]) -> None:
+        self._inner = data
+
+    def __iter__(self) -> Iterator[T]:
+        self._inner, this = itertools.tee(self._inner)
+        return this
+
+    def __len__(self) -> int:
+        i = 0
+        for _ in self:
+            i += 1
+        return i
+
+    def __bool__(self) -> bool:
+        for _ in self:
+            return True
+        return False
+
+    def __getitem__(self, index: int) -> T:  # type: ignore[override]
+        if index < 0:
+            raise IndexError("Negative indices are not supported")
+        for i, item in enumerate(self):
+            if i == index:
+                return item
+        raise IndexError("Index out of range")

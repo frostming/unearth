@@ -6,6 +6,8 @@ from unearth.finder import PackageFinder
 
 pytestmark = pytest.mark.usefixtures("pypi", "content_type")
 
+DEFAULT_INDEX_URL = "https://pypi.org/simple/"
+
 
 @pytest.mark.parametrize(
     "target_python,filename",
@@ -34,15 +36,15 @@ pytestmark = pytest.mark.usefixtures("pypi", "content_type")
 )
 def test_find_most_matching_wheel(session, target_python, filename):
     finder = PackageFinder(
-        session, index_urls=["https://pypi.org/simple"], target_python=target_python
+        session=session, index_urls=[DEFAULT_INDEX_URL], target_python=target_python
     )
     assert finder.find_best_match("black").best.link.filename == filename
 
 
 def test_find_package_with_format_control(session):
     finder = PackageFinder(
-        session,
-        index_urls=["https://pypi.org/simple"],
+        session=session,
+        index_urls=[DEFAULT_INDEX_URL],
         target_python=TargetPython(
             (3, 9), abis=["cp39"], impl="cp", platforms=["win_amd64"]
         ),
@@ -58,8 +60,8 @@ def test_find_package_with_format_control(session):
 
 def test_find_package_no_binary_for_all(session):
     finder = PackageFinder(
-        session,
-        index_urls=["https://pypi.org/simple"],
+        session=session,
+        index_urls=[DEFAULT_INDEX_URL],
         target_python=TargetPython(
             (3, 9), abis=["cp39"], impl="cp", platforms=["win_amd64"]
         ),
@@ -71,12 +73,12 @@ def test_find_package_no_binary_for_all(session):
 
 def test_find_package_prefer_binary(session):
     finder = PackageFinder(
-        session,
-        index_urls=["https://pypi.org/simple"],
+        session=session,
+        index_urls=[DEFAULT_INDEX_URL],
         target_python=TargetPython(
             (3, 9), abis=["cp39"], impl="cp", platforms=["win_amd64"]
         ),
-        prefer_binary=True,
+        prefer_binary=["first"],
     )
     assert (
         finder.find_best_match("first").best.link.filename
@@ -86,8 +88,8 @@ def test_find_package_prefer_binary(session):
 
 def test_find_package_with_hash_allowance(session):
     finder = PackageFinder(
-        session,
-        index_urls=["https://pypi.org/simple"],
+        session=session,
+        index_urls=[DEFAULT_INDEX_URL],
         target_python=TargetPython(
             (3, 9), abis=["cp39"], impl="cp", platforms=["win_amd64"]
         ),
@@ -108,8 +110,8 @@ def test_find_package_with_hash_allowance(session):
 @pytest.mark.parametrize("ignore_compat", [True, False])
 def test_find_package_ignoring_compatibility(session, ignore_compat):
     finder = PackageFinder(
-        session,
-        index_urls=["https://pypi.org/simple"],
+        session=session,
+        index_urls=[DEFAULT_INDEX_URL],
         target_python=TargetPython(
             (3, 9), abis=["cp39"], impl="cp", platforms=["win_amd64"]
         ),
@@ -121,8 +123,8 @@ def test_find_package_ignoring_compatibility(session, ignore_compat):
 
 def test_find_package_with_version_specifier(session):
     finder = PackageFinder(
-        session,
-        index_urls=["https://pypi.org/simple"],
+        session=session,
+        index_urls=[DEFAULT_INDEX_URL],
         ignore_compatibility=True,
     )
     matches = finder.find_matches("black==22.3.0")
@@ -134,8 +136,8 @@ def test_find_package_with_version_specifier(session):
 
 def test_find_package_allowing_prereleases(session):
     finder = PackageFinder(
-        session,
-        index_urls=["https://pypi.org/simple"],
+        session=session,
+        index_urls=[DEFAULT_INDEX_URL],
         ignore_compatibility=True,
     )
     matches = finder.find_matches("black<22.3.0", allow_prereleases=True)
@@ -152,8 +154,8 @@ def test_find_package_allowing_prereleases(session):
 
 def test_find_requirement_with_link(session):
     finder = PackageFinder(
-        session,
-        index_urls=["https://pypi.org/simple"],
+        session=session,
+        index_urls=[DEFAULT_INDEX_URL],
         ignore_compatibility=True,
     )
     req = "first @ https://pypi.org/files/first-2.0.2.tar.gz"
@@ -166,11 +168,9 @@ def test_find_requirement_with_link(session):
 def test_find_requirement_preference(session, fixtures_dir):
     find_link = Link.from_path(fixtures_dir / "findlinks/index.html")
     finder = PackageFinder(
-        session,
-        index_urls=["https://pypi.org/simple"],
-        find_links=[find_link.normalized],
-        ignore_compatibility=True,
+        session=session, index_urls=[DEFAULT_INDEX_URL], ignore_compatibility=True
     )
+    finder.add_find_links(find_link.normalized)
     best = finder.find_best_match("first").best
     assert best.link.filename == "first-2.0.3-py2.py3-none-any.whl"
     assert best.link.comes_from == find_link.normalized
@@ -179,12 +179,12 @@ def test_find_requirement_preference(session, fixtures_dir):
 def test_find_requirement_preference_respect_source_order(session, fixtures_dir):
     find_link = Link.from_path(fixtures_dir / "findlinks/index.html")
     finder = PackageFinder(
-        session,
-        index_urls=["https://pypi.org/simple"],
-        find_links=[find_link.normalized],
+        session=session,
+        index_urls=[DEFAULT_INDEX_URL],
         ignore_compatibility=True,
         respect_source_order=True,
     )
+    finder.add_find_links(find_link.normalized)
     best = finder.find_best_match("first").best
     assert best.link.filename == "first-2.0.2.tar.gz"
     assert best.link.comes_from == "https://pypi.org/simple/first/"
