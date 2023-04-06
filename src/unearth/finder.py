@@ -7,7 +7,7 @@ import itertools
 import os
 import pathlib
 from tempfile import TemporaryDirectory
-from typing import Iterable, NamedTuple, Sequence, TypedDict
+from typing import TYPE_CHECKING, Iterable, NamedTuple, Sequence, TypedDict
 from urllib.parse import urljoin
 
 import packaging.requirements
@@ -28,10 +28,14 @@ from unearth.preparer import unpack_link
 from unearth.session import PyPISession
 from unearth.utils import LazySequence
 
+if TYPE_CHECKING:
 
-class Source(TypedDict):
-    url: str
-    type: str
+    class Source(TypedDict):
+        url: str
+        type: str
+
+else:
+    Source = dict
 
 
 class BestMatch(NamedTuple):
