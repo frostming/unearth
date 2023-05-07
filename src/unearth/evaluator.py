@@ -282,14 +282,13 @@ def evaluate_package(
             )
             return False
 
-    if requirement.specifier and package.version:
-        if not requirement.specifier.contains(
-            package.version, prereleases=allow_prereleases
-        ):
-            logger.debug(
-                "Skipping package %s: version doesn't match %s",
-                package,
-                requirement.specifier,
-            )
-            return False
+    if package.version and not requirement.specifier.contains(
+        package.version, prereleases=allow_prereleases
+    ):
+        logger.debug(
+            "Skipping package %s: version doesn't match %s",
+            package,
+            requirement.specifier,
+        )
+        return False
     return True

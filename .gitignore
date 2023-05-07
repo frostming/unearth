@@ -15,7 +15,7 @@ docs/site
 venv/
 env/
 
-.pdm.toml
+.pdm-python
 __pypackages__/
 
 .nox/
