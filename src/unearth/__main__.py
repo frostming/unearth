@@ -8,10 +8,10 @@ import os
 import sys
 import tempfile
 from dataclasses import dataclass
-from typing import cast
 
 from packaging.requirements import Requirement
 
+from unearth.evaluator import TargetPython
 from unearth.finder import PackageFinder
 from unearth.link import Link
 from unearth.utils import splitext
@@ -30,6 +30,10 @@ class CLIArgs:
     all: bool
     link_only: bool
     download: str | None
+    py_ver: tuple[int, ...] | None
+    abis: list[str] | None
+    impl: str | None
+    platforms: list[str] | None
 
 
 def _setup_logger(verbosity: bool) -> None:
@@ -40,6 +44,14 @@ def _setup_logger(verbosity: bool) -> None:
     formatter = logging.Formatter("%(levelname)s: %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+
+
+def comma_split(arg: str) -> list[str]:
+    return arg.split(",")
+
+
+def to_py_ver(arg: str) -> tuple[int, ...]:
+    return tuple(int(i) for i in arg.split(".") if i.isdigit())
 
 
 def cli_parser() -> argparse.ArgumentParser:
@@ -109,6 +121,28 @@ def cli_parser() -> argparse.ArgumentParser:
         metavar="DIR",
         help="Download the package(s) to DIR.",
     )
+    group = parser.add_argument_group("Target Python options")
+    group.add_argument(
+        "--python-version",
+        "--py",
+        dest="py_ver",
+        type=to_py_ver,
+        help="Target Python version. e.g. 3.11.0",
+    )
+    group.add_argument(
+        "--abis", type=comma_split, help="Comma-separated list of ABIs. e.g. cp39,cp310"
+    )
+    group.add_argument(
+        "--implementation",
+        "--impl",
+        dest="impl",
+        help="Python implementation. e.g. cp,pp,jy,ip",
+    )
+    group.add_argument(
+        "--platforms",
+        type=comma_split,
+        help="Comma-separated list of platforms. e.g. win_amd64,linux_x86_64",
+    )
     return parser
 
 
@@ -122,13 +156,15 @@ def get_dest_for_package(dest: str, link: Link) -> str:
 
 def cli(argv: list[str] | None = None) -> None:
     parser = cli_parser()
-    args = cast(CLIArgs, parser.parse_args(argv))
+    args = CLIArgs(**vars(parser.parse_args(argv)))
     _setup_logger(args.verbose)
     name = args.requirement.name
+    target_python = TargetPython(args.py_ver, args.abis, args.impl, args.platforms)
     finder = PackageFinder(
         index_urls=args.index_urls or ["https://pypi.org/simple/"],
         find_links=args.find_links or [],
         trusted_hosts=args.trusted_hosts or [],
+        target_python=target_python,
         no_binary=[name] if args.no_binary else [],
         only_binary=[name] if args.only_binary else [],
         prefer_binary=[name] if args.prefer_binary else [],
