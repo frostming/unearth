@@ -111,7 +111,7 @@ class Link:
     def dist_info_link(self) -> Link | None:
         return (
             type(self)(f"{self.url_without_fragment}.metadata", self.comes_from)
-            if self.dist_info_metadata is not None
+            if self.dist_info_metadata
             else None
         )
 
