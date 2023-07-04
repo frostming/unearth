@@ -61,10 +61,12 @@ def parse_html_page(page: IndexPage) -> Iterable[Link]:
         url = parse.urljoin(base_url, href)
         requires_python = anchor.get("data-requires-python")
         yank_reason = anchor.get("data-yanked")
-        data_dist_info_metadata = anchor.get("data-dist-info-metadata")
+        metadata_hash = anchor.get(
+            "data-core-metadata", anchor.get("data-dist-info-metadata")
+        )
         dist_info_metadata: bool | dict[str, str] | None = None
-        if data_dist_info_metadata:
-            hash_name, has_hash, hash_value = data_dist_info_metadata.partition("=")
+        if metadata_hash:
+            hash_name, has_hash, hash_value = metadata_hash.partition("=")
             if has_hash:
                 dist_info_metadata = {hash_name: hash_value}
             else:
@@ -90,7 +92,7 @@ def parse_json_response(page: IndexPage) -> Iterable[Link]:
         requires_python: str | None = file.get("requires-python")
         yank_reason: str | None = file.get("yanked") or None
         dist_info_metadata: bool | dict[str, str] | None = file.get(
-            "data-dist-info-metadata"
+            "core-metadata", file.get("data-dist-info-metadata")
         )
         hashes: dict[str, str] | None = file.get("hashes")
         yield Link(
