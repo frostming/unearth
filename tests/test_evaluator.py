@@ -210,6 +210,7 @@ def test_retrieve_hash_from_internet(pypi, session, url):
     )
 
 
+@pytest.mark.filterwarnings("ignore::FutureWarning")
 @pytest.mark.parametrize(
     "link,expected",
     [
@@ -225,6 +226,13 @@ def test_retrieve_hash_from_internet(pypi, session, url):
                 "macosx_11_0_arm64.whl"
             ),
             False,
+        ),
+        (
+            Link(
+                "https://test.pypi.org/files/click-8.1.3-py3-none-any.whl",
+                requires_python=">3.6.*",
+            ),
+            True,
         ),
     ],
 )

@@ -21,7 +21,12 @@ from requests import Session
 
 from unearth.link import Link
 from unearth.pep425tags import get_supported
-from unearth.utils import ARCHIVE_EXTENSIONS, splitext, strip_extras
+from unearth.utils import (
+    ARCHIVE_EXTENSIONS,
+    fix_legacy_specifier,
+    splitext,
+    strip_extras,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +156,9 @@ class Evaluator:
             py_ver = self.target_python.py_ver or sys.version_info[:2]
             py_version = ".".join(str(v) for v in py_ver)
             try:
-                requires_python = SpecifierSet(link.requires_python)
+                requires_python = SpecifierSet(
+                    fix_legacy_specifier(link.requires_python)
+                )
             except InvalidSpecifier:
                 raise LinkMismatchError(
                     f"Invalid requires-python: {link.requires_python}"

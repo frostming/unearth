@@ -4,8 +4,10 @@ from __future__ import annotations
 import functools
 import itertools
 import os
+import re
 import sys
 import urllib.parse as parse
+import warnings
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence, TypeVar
 from urllib.request import pathname2url, url2pathname
@@ -217,3 +219,39 @@ class LazySequence(Sequence[T]):
             if i == index:
                 return item
         raise IndexError("Index out of range")
+
+
+_legacy_specifier_re = re.compile(r"(==|!=|<=|>=|<|>)(\s*)([^,;\s)]*)")
+
+
+@functools.lru_cache()
+def fix_legacy_specifier(specifier: str) -> str:
+    """Since packaging 22.0, legacy specifiers like '>=4.*' are no longer
+    supported. We try to normalize them to the new format.
+    """
+
+    def fix_wildcard(match: re.Match[str]) -> str:
+        operator, _, version = match.groups()
+        if operator in ("==", "!="):
+            return match.group(0)
+        if ".*" in version:
+            warnings.warn(
+                ".* suffix can only be used with `==` or `!=` operators",
+                FutureWarning,
+                stacklevel=4,
+            )
+            version = version.replace(".*", ".0")
+            if operator in ("<", "<="):  # <4.* and <=4.* are equivalent to <4.0
+                operator = "<"
+            elif operator in (">", ">="):  # >4.* and >=4.* are equivalent to >=4.0
+                operator = ">="
+        elif "+" in version:  # Drop the local version
+            warnings.warn(
+                "Local version label can only be used with `==` or `!=` operators",
+                FutureWarning,
+                stacklevel=4,
+            )
+            version = version.split("+")[0]
+        return f"{operator}{version}"
+
+    return _legacy_specifier_re.sub(fix_wildcard, specifier)
