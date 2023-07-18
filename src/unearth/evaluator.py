@@ -6,7 +6,6 @@ import hashlib
 import logging
 import sys
 from typing import Any
-from urllib.parse import urlencode
 
 import packaging.requirements
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
@@ -129,16 +128,13 @@ class Evaluator:
     Args:
         package_name (str): The links must match the package name
         target_python (TargetPython): The links must match the target Python
-        hashes (dict[str, list[str]): The links must have the correct hashes
         ignore_compatibility (bool): Whether to ignore the compatibility check
         allow_yanked (bool): Whether to allow yanked candidates
         format_control (bool): Format control flags
     """
 
     package_name: str
-    session: Session
     target_python: TargetPython = dc.field(default_factory=TargetPython)
-    hashes: dict[str, list[str]] = dc.field(default_factory=dict)
     ignore_compatibility: bool = False
     allow_yanked: bool = False
     format_control: FormatControl = dc.field(default_factory=FormatControl)
@@ -146,12 +142,12 @@ class Evaluator:
     def __post_init__(self) -> None:
         self._canonical_name = canonicalize_name(self.package_name)
 
-    def _check_yanked(self, link: Link) -> None:
+    def check_yanked(self, link: Link) -> None:
         if link.yank_reason is not None and not self.allow_yanked:
             yank_reason = f"due to {link.yank_reason}" if link.yank_reason else ""
             raise LinkMismatchError(f"Yanked {yank_reason}")
 
-    def _check_requires_python(self, link: Link) -> None:
+    def check_requires_python(self, link: Link) -> None:
         if not self.ignore_compatibility and link.requires_python:
             py_ver = self.target_python.py_ver or sys.version_info[:2]
             py_version = ".".join(str(v) for v in py_ver)
@@ -171,54 +167,14 @@ class Evaluator:
                     ),
                 )
 
-    def _check_hashes(self, link: Link) -> None:
-        def hash_mismatch(
-            hash_name: str, given_hash: str, allowed_hashes: list[str]
-        ) -> None:
-            raise LinkMismatchError(
-                f"Hash mismatch, expected: {allowed_hashes}\n"
-                f"got: {hash_name}:{given_hash}"
-            )
-
-        if not self.hashes:
-            return
-        link_hashes = link.hash_option
-        if link_hashes:
-            for hash_name, allowed_hashes in self.hashes.items():
-                if hash_name in link_hashes:
-                    given_hash = link_hashes[hash_name][0]
-                    if given_hash not in allowed_hashes:
-                        hash_mismatch(hash_name, given_hash, allowed_hashes)
-                    return
-
-        hash_name, allowed_hashes = next(iter(self.hashes.items()))
-        given_hash = self._get_hash(link, hash_name)
-        if given_hash not in allowed_hashes:
-            hash_mismatch(hash_name, given_hash, allowed_hashes)
-
-    def _get_hash(self, link: Link, hash_name: str) -> str:
-        resp = self.session.get(link.normalized, stream=True)
-        hasher = hashlib.new(hash_name)
-        for chunk in resp.iter_content(chunk_size=1024 * 8):
-            hasher.update(chunk)
-        digest = hasher.hexdigest()
-        # Store the hash on the link for future use
-        fragment_dict = link._fragment_dict
-        fragment_dict.pop(link.hash_name, None)  # type: ignore
-        fragment_dict[hash_name] = digest
-        link.__dict__["parsed"] = link.parsed._replace(
-            fragment=urlencode(fragment_dict)
-        )
-        return digest
-
     def evaluate_link(self, link: Link) -> Package | None:
         """
         Evaluate the link and return the package if it matches or None if it doesn't.
         """
         try:
             self.format_control.check_format(link, self.package_name)
-            self._check_yanked(link)
-            self._check_requires_python(link)
+            self.check_yanked(link)
+            self.check_requires_python(link)
             version: str | None = None
             if link.is_wheel:
                 try:
@@ -260,7 +216,6 @@ class Evaluator:
                     raise LinkMismatchError(
                         f"Invalid version in the filename {egg_info}: {version}"
                     )
-            self._check_hashes(link)
         except LinkMismatchError as e:
             logger.debug("Skipping link %s: %s", link, e)
             return None
@@ -299,3 +254,35 @@ def evaluate_package(
         )
         return False
     return True
+
+
+def _get_hash(link: Link, hash_name: str, session: Session) -> str:
+    resp = session.get(link.normalized, stream=True)
+    hasher = hashlib.new(hash_name)
+    for chunk in resp.iter_content(chunk_size=1024 * 8):
+        hasher.update(chunk)
+    digest = hasher.hexdigest()
+    if not link.hashes:
+        link.hashes = {}
+    link.hashes[hash_name] = digest
+    return digest
+
+
+def validate_hashes(
+    package: Package, hashes: dict[str, list[str]], session: Session
+) -> bool:
+    if not hashes:
+        return True
+    link = package.link
+    link_hashes = link.hash_option
+    if link_hashes:
+        for hash_name, allowed_hashes in hashes.items():
+            if hash_name in link_hashes:
+                given_hash = link_hashes[hash_name][0]
+                if given_hash not in allowed_hashes:
+                    return False
+                return True
+
+    hash_name, allowed_hashes = next(iter(hashes.items()))
+    given_hash = _get_hash(link, hash_name, session)
+    return given_hash in allowed_hashes
