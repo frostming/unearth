@@ -6,6 +6,7 @@ import functools
 import itertools
 import os
 import pathlib
+import warnings
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Iterable, NamedTuple, Sequence
 from urllib.parse import urljoin
@@ -22,6 +23,7 @@ from unearth.evaluator import (
     TargetPython,
     evaluate_package,
     is_equality_specifier,
+    validate_hashes,
 )
 from unearth.link import Link
 from unearth.preparer import unpack_link
@@ -145,13 +147,17 @@ class PackageFinder:
         Args:
             package_name (str): The desired package name
             allow_yanked (bool): Whether to allow yanked candidates.
-            hashes (dict[str, list[str]]|None): The hashes to filter on.
 
         Returns:
             Evaluator: The evaluator for the given package name
         """
-        if hashes:
-            hashes = {name: sorted(values) for name, values in hashes.items()}
+        if hashes is not None:
+            warnings.warn(
+                "The evaluator no longer validates hashes, "
+                "please remove the hashes argument",
+                FutureWarning,
+                stacklevel=2,
+            )
         canonical_name = canonicalize_name(package_name)
         format_control = FormatControl(
             no_binary=canonical_name in self.no_binary or ":all:" in self.no_binary,
@@ -160,11 +166,9 @@ class PackageFinder:
         )
         return Evaluator(
             package_name=package_name,
-            session=self.session,
             target_python=self.target_python,
             ignore_compatibility=self.ignore_compatibility,
             allow_yanked=allow_yanked,
-            hashes=hashes or {},
             format_control=format_control,
         )
 
@@ -198,6 +202,14 @@ class PackageFinder:
         )
         return filter(evaluator, packages)
 
+    def _evaluate_hashes(
+        self, packages: Iterable[Package], hashes: dict[str, list[str]]
+    ) -> Iterable[Package]:
+        evaluator = functools.partial(
+            validate_hashes, hashes=hashes, session=self.session
+        )
+        return filter(evaluator, packages)
+
     def _sort_key(self, package: Package) -> tuple:
         """The key for sort, package with the largest value is the most preferred."""
         link = package.link
@@ -225,19 +237,17 @@ class PackageFinder:
         self,
         package_name: str,
         allow_yanked: bool = False,
-        hashes: dict[str, list[str]] | None = None,
     ) -> Iterable[Package]:
         """Find all packages with the given name.
 
         Args:
             package_name (str): The desired package name
             allow_yanked (bool): Whether to allow yanked candidates.
-            hashes (dict[str, list[str]]|None): The hashes to filter on.
 
         Returns:
             Iterable[Package]: The packages with the given name, sorted by best match.
         """
-        evaluator = self.build_evaluator(package_name, allow_yanked, hashes)
+        evaluator = self.build_evaluator(package_name, allow_yanked)
 
         def find_one_source(source: Source) -> Iterable[Package]:
             if source["type"] == "index":
@@ -278,20 +288,23 @@ class PackageFinder:
         Returns:
             Sequence[Package]: The packages list sorted by best match
         """
-        return LazySequence(self._find_packages(package_name, allow_yanked, hashes))
+        return LazySequence(
+            self._evaluate_hashes(
+                self._find_packages(package_name, allow_yanked), hashes=hashes or {}
+            )
+        )
 
     def _find_packages_from_requirement(
         self,
         requirement: packaging.requirements.Requirement,
         allow_yanked: bool | None = None,
-        hashes: dict[str, list[str]] | None = None,
     ) -> Iterable[Package]:
         if allow_yanked is None:
             allow_yanked = is_equality_specifier(requirement.specifier)
         if requirement.url:
             yield Package(requirement.name, None, link=Link(requirement.url))
         else:
-            yield from self._find_packages(requirement.name, allow_yanked, hashes)
+            yield from self._find_packages(requirement.name, allow_yanked)
 
     def find_matches(
         self,
@@ -317,10 +330,13 @@ class PackageFinder:
         if isinstance(requirement, str):
             requirement = packaging.requirements.Requirement(requirement)
         return LazySequence(
-            self._evaluate_packages(
-                self._find_packages_from_requirement(requirement, allow_yanked, hashes),
-                requirement,
-                allow_prereleases,
+            self._evaluate_hashes(
+                self._evaluate_packages(
+                    self._find_packages_from_requirement(requirement, allow_yanked),
+                    requirement,
+                    allow_prereleases,
+                ),
+                hashes=hashes or {},
             )
         )
 
@@ -347,12 +363,13 @@ class PackageFinder:
         """
         if isinstance(requirement, str):
             requirement = packaging.requirements.Requirement(requirement)
-        packages = self._find_packages_from_requirement(
-            requirement, allow_yanked, hashes
-        )
+        packages = self._find_packages_from_requirement(requirement, allow_yanked)
         candidates = LazySequence(packages)
         applicable_candidates = LazySequence(
-            self._evaluate_packages(packages, requirement, allow_prereleases)
+            self._evaluate_hashes(
+                self._evaluate_packages(packages, requirement, allow_prereleases),
+                hashes=hashes or {},
+            )
         )
         best_match = next(iter(applicable_candidates), None)
         return BestMatch(best_match, applicable_candidates, candidates)

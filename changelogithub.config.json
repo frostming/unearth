@@ -1,5 +1,6 @@
 {
   "types": {
+    "break": { "title": "💥 Breaking Changes" },
     "feat": { "title": "🚀 Features" },
     "fix": { "title": "🐞 Bug Fixes" },
     "doc": { "title": "📝 Documentation" },
