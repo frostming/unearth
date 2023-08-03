@@ -297,21 +297,21 @@ def unpack_link(
         # A remote artfiact link, check the download dir first
         artifact = download_dir / link.filename
         if not _check_downloaded(artifact, hashes):
-            resp = session.get(link.normalized, stream=True)
-            try:
-                resp.raise_for_status()
-            except HTTPError as e:
-                raise UnpackError(f"Download failed: {e}") from None
-            if getattr(resp, "from_cache", False):
-                logger.info("Using cached %s", link)
-            else:
-                size = format_size(resp.headers.get("Content-Length", ""))
-                logger.info("Downloading %s (%s)", link, size)
-            with artifact.open("wb") as f:
-                for chunk in resp.iter_content(chunk_size=READ_CHUNK_SIZE):
-                    if chunk:
-                        validator.update(chunk)
-                        f.write(chunk)
+            with session.get(link.normalized, stream=True) as resp:
+                try:
+                    resp.raise_for_status()
+                except HTTPError as e:
+                    raise UnpackError(f"Download failed: {e}") from None
+                if getattr(resp, "from_cache", False):
+                    logger.info("Using cached %s", link)
+                else:
+                    size = format_size(resp.headers.get("Content-Length", ""))
+                    logger.info("Downloading %s (%s)", link, size)
+                with artifact.open("wb") as f:
+                    for chunk in resp.iter_content(chunk_size=READ_CHUNK_SIZE):
+                        if chunk:
+                            validator.update(chunk)
+                            f.write(chunk)
             validator.validate()
     if link.is_wheel:
         if link.is_file:

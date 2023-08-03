@@ -257,10 +257,10 @@ def evaluate_package(
 
 
 def _get_hash(link: Link, hash_name: str, session: Session) -> str:
-    resp = session.get(link.normalized, stream=True)
     hasher = hashlib.new(hash_name)
-    for chunk in resp.iter_content(chunk_size=1024 * 8):
-        hasher.update(chunk)
+    with session.get(link.normalized, stream=True) as resp:
+        for chunk in resp.iter_content(chunk_size=1024 * 8):
+            hasher.update(chunk)
     digest = hasher.hexdigest()
     if not link.hashes:
         link.hashes = {}
