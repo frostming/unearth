@@ -85,7 +85,9 @@ class KeyringCliProvider(KeyringBaseProvider):
         """Mirror the implementation of keyring.get_password using cli"""
         cmd = [self.keyring, "get", service_name, username]
         env = dict(os.environ, PYTHONIOENCODING="utf-8")
-        res = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, env=env)
+        res = subprocess.run(
+            cmd, stdin=subprocess.DEVNULL, capture_output=True, env=env
+        )
         if res.returncode:
             return None
         return res.stdout.decode("utf-8").strip(os.linesep)
@@ -209,14 +211,18 @@ class MultiDomainBasicAuth(AuthBase):
         # If we don't have a password and keyring is available, use it.
         if allow_keyring:
             # The index url is more specific than the netloc, so try it first
-            kr_auth = get_keyring_auth(index_url, username) or get_keyring_auth(netloc, username)
+            kr_auth = get_keyring_auth(index_url, username) or get_keyring_auth(
+                netloc, username
+            )
             if kr_auth:
                 logger.debug("Found credentials in keyring for %s", netloc)
                 return kr_auth
 
         return username, password
 
-    def _get_url_and_credentials(self, original_url: str) -> tuple[str, str | None, str | None]:
+    def _get_url_and_credentials(
+        self, original_url: str
+    ) -> tuple[str, str | None, str | None]:
         """Return the credentials to use for the provided URL.
 
         If allowed, netrc and keyring may be used to obtain the
