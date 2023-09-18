@@ -85,9 +85,7 @@ class KeyringCliProvider(KeyringBaseProvider):
         """Mirror the implementation of keyring.get_password using cli"""
         cmd = [self.keyring, "get", service_name, username]
         env = dict(os.environ, PYTHONIOENCODING="utf-8")
-        res = subprocess.run(
-            cmd, stdin=subprocess.DEVNULL, capture_output=True, env=env
-        )
+        res = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, env=env)
         if res.returncode:
             return None
         return res.stdout.decode("utf-8").strip(os.linesep)
@@ -211,18 +209,14 @@ class MultiDomainBasicAuth(AuthBase):
         # If we don't have a password and keyring is available, use it.
         if allow_keyring:
             # The index url is more specific than the netloc, so try it first
-            kr_auth = get_keyring_auth(index_url, username) or get_keyring_auth(
-                netloc, username
-            )
+            kr_auth = get_keyring_auth(index_url, username) or get_keyring_auth(netloc, username)
             if kr_auth:
                 logger.debug("Found credentials in keyring for %s", netloc)
                 return kr_auth
 
         return username, password
 
-    def _get_url_and_credentials(
-        self, original_url: str
-    ) -> tuple[str, str | None, str | None]:
+    def _get_url_and_credentials(self, original_url: str) -> tuple[str, str | None, str | None]:
         """Return the credentials to use for the provided URL.
 
         If allowed, netrc and keyring may be used to obtain the
@@ -262,8 +256,8 @@ class MultiDomainBasicAuth(AuthBase):
         if username is not None and password is not None:
             req = HTTPBasicAuth(username, password)(req)
 
-        # Attach a hook to handle 401 responses
-        req.register_hook("response", self.handle_401)
+        # Attach a hook to handle 400 responses
+        req.register_hook("response", self.handle_400s)
 
         return req
 
@@ -284,14 +278,10 @@ class MultiDomainBasicAuth(AuthBase):
             return False
         return input("Save credentials to keyring [y/N]: ") == "y"
 
-    def handle_401(self, resp: Response, **kwargs: Any) -> Response:
-        # We only care about 401 responses, anything else we want to just
+    def handle_400s(self, resp: Response, **kwargs: Any) -> Response:
+        # We only care about 401, 403, 404 responses, anything else we want to just
         #   pass through the actual response
-        if resp.status_code != 401:
-            return resp
-
-        # We are not able to prompt the user so simply return the response
-        if not self.prompting:
+        if resp.status_code not in [401, 403, 404]:
             return resp
 
         parsed = urlparse(cast(str, resp.url))
@@ -306,6 +296,11 @@ class MultiDomainBasicAuth(AuthBase):
         # Prompt the user for a new username and password
         save = False
         if not username and not password:
+            # We are not able to prompt the user so simply return the response
+            # Also, do not prompt on 404
+            if not self.prompting or resp.status_code == 404:
+                return resp
+
             username, password, save = self._prompt_for_password(parsed.netloc)
 
         # Store the new username and password to use for future requests
@@ -326,7 +321,7 @@ class MultiDomainBasicAuth(AuthBase):
         req = HTTPBasicAuth(username or "", password or "")(resp.request)
         # We add new hooks on the fly, since the req is the same as resp.request
         # The hook will be picked up by the next iteration of `dispatch_hooks()`
-        req.register_hook("response", self.warn_on_401)
+        req.register_hook("response", self.warn_on_401_403_404)
 
         # On successful request, save the credentials that were used to
         # keyring. (Note that if the user responded "no" above, this member
@@ -340,11 +335,11 @@ class MultiDomainBasicAuth(AuthBase):
 
         return new_resp
 
-    def warn_on_401(self, resp: Response, **kwargs: Any) -> None:
+    def warn_on_401_403_404(self, resp: Response, **kwargs: Any) -> None:
         """Response callback to warn about incorrect credentials."""
-        if resp.status_code == 401:
+        if resp.status_code in [401, 403, 404]:
             logger.warning(
-                "401 Error, Credentials not correct for %s",
+                f"{resp.status_code} Error, Credentials not correct for %s",
                 resp.request.url,
             )
 
