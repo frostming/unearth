@@ -12,6 +12,7 @@ from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.tags import Tag
 from packaging.utils import (
     InvalidWheelFilename,
+    NormalizedName,
     canonicalize_name,
     parse_wheel_filename,
 )
@@ -102,23 +103,29 @@ class Package:
 
 @dc.dataclass(frozen=True)
 class FormatControl:
-    only_binary: bool = False
-    no_binary: bool = False
+    only_binary: set[NormalizedName] = dc.field(default_factory=set)
+    no_binary: set[NormalizedName] = dc.field(default_factory=set)
 
-    def __post_init__(self):
-        if self.only_binary and self.no_binary:
-            raise ValueError(
-                "Not allowed to set only_binary and no_binary at the same time."
-            )
+    def get_allowed_formats(self, canonical_name: NormalizedName) -> set[str]:
+        allowed_formats = {"binary", "source"}
+        if canonical_name in self.only_binary:
+            allowed_formats.discard("source")
+        elif canonical_name in self.no_binary:
+            allowed_formats.discard("binary")
+        elif ":all:" in self.only_binary:
+            allowed_formats.discard("source")
+        elif ":all:" in self.no_binary:
+            allowed_formats.discard("binary")
+        return allowed_formats
 
     def check_format(self, link: Link, project_name: str) -> None:
-        if self.only_binary:
-            if not link.is_wheel:
-                raise LinkMismatchError(f"only binaries are allowed for {project_name}")
-        if self.no_binary:
-            if link.is_wheel:
-                raise LinkMismatchError(f"no binary is allowed for {project_name}")
-        return
+        allowed_formats = self.get_allowed_formats(canonicalize_name(project_name))
+        if link.is_wheel and "binary" not in allowed_formats:
+            raise LinkMismatchError(f"binary wheel is not allowed for {project_name}")
+        if not link.is_wheel and "source" not in allowed_formats:
+            raise LinkMismatchError(
+                f"source distribution is not allowed for {project_name}"
+            )
 
 
 @dc.dataclass

@@ -35,28 +35,23 @@ def session():
         sess.close()
 
 
-def test_no_binary_and_only_binary_conflict():
-    with pytest.raises(ValueError):
-        FormatControl(no_binary=True, only_binary=True)
-
-
 @pytest.mark.parametrize("link", BINARY_LINKS)
 def test_only_binary_is_allowed(link):
-    format_control = FormatControl(only_binary=True, no_binary=False)
+    format_control = FormatControl(only_binary={"foo"})
     format_control.check_format(link, "foo")
 
-    format_control = FormatControl(only_binary=False, no_binary=True)
+    format_control = FormatControl(no_binary={"foo"})
     with pytest.raises(ValueError):
         format_control.check_format(link, "foo")
 
 
 @pytest.mark.parametrize("link", SOURCE_LINKS)
 def test_no_binary_is_allowed(link):
-    format_control = FormatControl(only_binary=True, no_binary=False)
+    format_control = FormatControl(only_binary={"foo"})
     with pytest.raises(ValueError):
         format_control.check_format(link, "foo")
 
-    format_control = FormatControl(only_binary=False, no_binary=True)
+    format_control = FormatControl(no_binary={"foo"})
     format_control.check_format(link, "foo")
 
 

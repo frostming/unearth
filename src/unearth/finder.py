@@ -95,9 +95,9 @@ class PackageFinder:
             self.add_find_links(url)
         self.target_python = target_python or TargetPython()
         self.ignore_compatibility = ignore_compatibility
-        self.no_binary = [canonicalize_name(name) for name in no_binary]
-        self.only_binary = [canonicalize_name(name) for name in only_binary]
-        self.prefer_binary = [canonicalize_name(name) for name in prefer_binary]
+        self.no_binary = {canonicalize_name(name) for name in no_binary}
+        self.only_binary = {canonicalize_name(name) for name in only_binary}
+        self.prefer_binary = {canonicalize_name(name) for name in prefer_binary}
         self.trusted_hosts = trusted_hosts
         self._session = session
         self.respect_source_order = respect_source_order
@@ -158,11 +158,8 @@ class PackageFinder:
                 FutureWarning,
                 stacklevel=2,
             )
-        canonical_name = canonicalize_name(package_name)
         format_control = FormatControl(
-            no_binary=canonical_name in self.no_binary or ":all:" in self.no_binary,
-            only_binary=canonical_name in self.only_binary
-            or ":all:" in self.only_binary,
+            no_binary=self.no_binary, only_binary=self.only_binary
         )
         return Evaluator(
             package_name=package_name,
