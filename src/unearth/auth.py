@@ -345,7 +345,8 @@ class MultiDomainBasicAuth(AuthBase):
         """Response callback to warn about incorrect credentials."""
         if resp.status_code in [401, 403, 404]:
             logger.warning(
-                f"{resp.status_code} Error, Credentials not correct for %s",
+                "%s Error, Credentials not correct for %s",
+                resp.status_code,
                 resp.request.url,
             )
 
