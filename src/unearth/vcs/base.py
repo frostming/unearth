@@ -76,6 +76,13 @@ class VersionControl(abc.ABC):
                     logger.debug(e.stdout.rstrip())
                 return subprocess.CompletedProcess(e.args, e.returncode, e.stdout)
             raise UnpackError(e.output) from None
+        except FileNotFoundError:
+            logger.debug(f"Cannot find `{self.name}`, PATH={os.environ.get('PATH')}")
+            msg = (
+                f"Unable to find executable `{self.name}`, "
+                "make sure it's installed in PATH."
+            )
+            raise FileNotFoundError(msg) from None
         else:
             if log_output:
                 logger.debug(result.stdout.rstrip())
