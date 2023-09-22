@@ -71,11 +71,12 @@ class KeyringCliProvider(KeyringBaseProvider):
         self.keyring = cmd
 
     def get_auth_info(self, url: str, username: str | None) -> AuthInfo | None:
-        if username is not None:
-            logger.debug("Getting password from keyring CLI for %s@%s", username, url)
-            password = self._get_password(url, username)
-            if password is not None:
-                return username, password
+        if username is None:
+            username = "__token__"
+        logger.debug("Getting password from keyring CLI for %s@%s", username, url)
+        password = self._get_password(url, username)
+        if password is not None:
+            return username, password
         return None
 
     def save_auth_info(self, url: str, username: str, password: str) -> None:
