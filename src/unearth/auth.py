@@ -175,7 +175,7 @@ class MultiDomainBasicAuth(AuthBase):
         self,
         original_url: str,
         *,
-        allow_netrc: bool = False,
+        allow_netrc: bool = True,
         allow_keyring: bool = False,
     ) -> tuple[str | None, str | None]:
         """Find and return credentials for the specified URL."""
@@ -263,7 +263,7 @@ class MultiDomainBasicAuth(AuthBase):
             req = HTTPBasicAuth(username, password)(req)
 
         # Attach a hook to handle 400 responses
-        req.register_hook("response", self.handle_400s)
+        req.register_hook("response", self.handle_401)
 
         return req
 
@@ -284,10 +284,10 @@ class MultiDomainBasicAuth(AuthBase):
             return False
         return input("Save credentials to keyring [y/N]: ") == "y"
 
-    def handle_400s(self, resp: Response, **kwargs: Any) -> Response:
-        # We only care about 401, 403, 404 responses, anything else we want to just
+    def handle_401(self, resp: Response, **kwargs: Any) -> Response:
+        # We only care about 401 response, anything else we want to just
         #   pass through the actual response
-        if resp.status_code not in [401, 403, 404]:
+        if resp.status_code != 401:
             return resp
 
         parsed = urlparse(cast(str, resp.url))
@@ -295,7 +295,7 @@ class MultiDomainBasicAuth(AuthBase):
         # Query the keyring for credentials:
         username, password = self._get_new_credentials(
             resp.url,
-            allow_netrc=True,
+            allow_netrc=False,
             allow_keyring=True,
         )
 
@@ -304,7 +304,7 @@ class MultiDomainBasicAuth(AuthBase):
         if not username and not password:
             # We are not able to prompt the user so simply return the response
             # Also, do not prompt on 404
-            if not self.prompting or resp.status_code == 404:
+            if not self.prompting:
                 return resp
 
             username, password, save = self._prompt_for_password(parsed.netloc)
@@ -327,7 +327,7 @@ class MultiDomainBasicAuth(AuthBase):
         req = HTTPBasicAuth(username or "", password or "")(resp.request)
         # We add new hooks on the fly, since the req is the same as resp.request
         # The hook will be picked up by the next iteration of `dispatch_hooks()`
-        req.register_hook("response", self.warn_on_401_403_404)
+        req.register_hook("response", self.warn_on_401)
 
         # On successful request, save the credentials that were used to
         # keyring. (Note that if the user responded "no" above, this member
@@ -341,9 +341,9 @@ class MultiDomainBasicAuth(AuthBase):
 
         return new_resp
 
-    def warn_on_401_403_404(self, resp: Response, **kwargs: Any) -> None:
+    def warn_on_401(self, resp: Response, **kwargs: Any) -> None:
         """Response callback to warn about incorrect credentials."""
-        if resp.status_code in [401, 403, 404]:
+        if resp.status_code == 401:
             logger.warning(
                 "%s Error, Credentials not correct for %s",
                 resp.status_code,
