@@ -262,7 +262,7 @@ class MultiDomainBasicAuth(AuthBase):
         if username is not None and password is not None:
             req = HTTPBasicAuth(username, password)(req)
 
-        # Attach a hook to handle 400 responses
+        # Attach a hook to handle 401 responses
         req.register_hook("response", self.handle_401)
 
         return req
@@ -303,7 +303,6 @@ class MultiDomainBasicAuth(AuthBase):
         save = False
         if not username and not password:
             # We are not able to prompt the user so simply return the response
-            # Also, do not prompt on 404
             if not self.prompting:
                 return resp
 
