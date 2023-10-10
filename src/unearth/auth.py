@@ -235,7 +235,9 @@ class MultiDomainBasicAuth(AuthBase):
         _, url = split_auth_from_url(original_url)
         netloc = urlparse(url).netloc
         # Try to get credentials from original url
-        username, password = self._get_new_credentials(original_url)
+        username, password = self._get_new_credentials(
+            original_url, allow_netrc=True, allow_keyring=False
+        )
 
         # If credentials not found, use any stored credentials for this netloc.
         # Do this if either the username or the password is missing.
