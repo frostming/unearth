@@ -26,12 +26,14 @@ from unearth.evaluator import (
     validate_hashes,
 )
 from unearth.link import Link
-from unearth.preparer import unpack_link
+from unearth.preparer import noop_download_reporter, noop_unpack_reporter, unpack_link
 from unearth.session import PyPISession
 from unearth.utils import LazySequence
 
 if TYPE_CHECKING:
     from typing import TypedDict
+
+    from unearth.preparer import DownloadReporter, UnpackReporter
 
     class Source(TypedDict):
         url: str
@@ -377,6 +379,8 @@ class PackageFinder:
         location: str | pathlib.Path,
         download_dir: str | pathlib.Path | None = None,
         hashes: dict[str, list[str]] | None = None,
+        download_reporter: DownloadReporter = noop_download_reporter,
+        unpack_reporter: UnpackReporter = noop_unpack_reporter,
     ) -> pathlib.Path:
         """Download and unpack the package at the given link.
 
@@ -393,21 +397,32 @@ class PackageFinder:
             download_dir: The directory to download to, or None to use a
                 temporary directory created by unearth.
             hashes (dict[str, list[str]]|None): The optional hash dict for validation.
+            download_reporter (DownloadReporter): The download reporter for progress
+                reporting. By default, it does nothing.
+            unpack_reporter (UnpackReporter): The unpack reporter for progress
+                reporting. By default, it does nothing.
 
         Returns:
             The path to the installable file or directory.
         """
-        # Strip the rev part for VCS links
+        import contextlib
+
         if hashes is None:
             hashes = link.hash_option
-        if download_dir is None:
-            download_dir = TemporaryDirectory(prefix="unearth-download-").name
-        file = unpack_link(
-            self.session,
-            link,
-            pathlib.Path(download_dir),
-            pathlib.Path(location),
-            hashes,
-            verbosity=self.verbosity,
-        )
+
+        with contextlib.ExitStack() as stack:
+            if download_dir is None:
+                download_dir = stack.enter_context(
+                    TemporaryDirectory(prefix="unearth-download-")
+                )
+            file = unpack_link(
+                self.session,
+                link,
+                pathlib.Path(download_dir),
+                pathlib.Path(location),
+                hashes,
+                verbosity=self.verbosity,
+                download_reporter=download_reporter,
+                unpack_reporter=unpack_reporter,
+            )
         return file.joinpath(link.subdirectory) if link.subdirectory else file

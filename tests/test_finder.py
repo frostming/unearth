@@ -188,3 +188,42 @@ def test_find_requirement_preference_respect_source_order(session, fixtures_dir)
     best = finder.find_best_match("first").best
     assert best.link.filename == "first-2.0.2.tar.gz"
     assert best.link.comes_from == "https://pypi.org/simple/first/"
+
+
+def test_download_package_file(session, tmp_path):
+    finder = PackageFinder(
+        session=session,
+        index_urls=[DEFAULT_INDEX_URL],
+        ignore_compatibility=True,
+    )
+    found = finder.find_best_match("first").best.link
+    assert found.filename == "first-2.0.2.tar.gz"
+    for subdir in ("download", "unpack"):
+        (tmp_path / subdir).mkdir()
+
+    download_reports = []
+    unpack_reports = []
+
+    def download_reporter(link, completed, total):
+        download_reports.append((link, completed, total))
+
+    def unpack_reporter(filename, completed, total):
+        unpack_reports.append((filename, completed, total))
+
+    finder.download_and_unpack(
+        found,
+        tmp_path / "unpack",
+        download_dir=tmp_path / "download",
+        download_reporter=download_reporter,
+        unpack_reporter=unpack_reporter,
+    )
+    downloaded = tmp_path / "download" / found.filename
+    assert downloaded.exists()
+    size = downloaded.stat().st_size
+    assert size > 0
+    _, completed, total = download_reports[-1]
+    assert completed == total == size
+
+    filename, completed, total = unpack_reports[-1]
+    assert completed == total
+    assert filename == downloaded

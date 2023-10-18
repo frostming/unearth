@@ -1,6 +1,7 @@
 """Unpack the link to an installed wheel or source."""
 from __future__ import annotations
 
+import functools
 import hashlib
 import logging
 import mimetypes
@@ -10,7 +11,7 @@ import stat
 import tarfile
 import zipfile
 from pathlib import Path
-from typing import Iterable, cast
+from typing import TYPE_CHECKING, Iterable, cast
 
 from requests import HTTPError, Session
 
@@ -23,8 +24,29 @@ from unearth.utils import (
     ZIP_EXTENSIONS,
     display_path,
     format_size,
+    iter_with_callback,
 )
 from unearth.vcs import vcs_support
+
+if TYPE_CHECKING:
+    from typing import Protocol
+
+    class DownloadReporter(Protocol):
+        def __call__(self, link: Link, completed: int, total: int | None) -> None:
+            ...
+
+    class UnpackReporter(Protocol):
+        def __call__(self, filename: Path, completed: int, total: int | None) -> None:
+            ...
+
+
+def noop_download_reporter(link: Link, completed: int, total: int | None) -> None:
+    pass
+
+
+def noop_unpack_reporter(filename: Path, completed: int, total: int | None) -> None:
+    pass
+
 
 READ_CHUNK_SIZE = 8192
 logger = logging.getLogger(__name__)
@@ -133,30 +155,33 @@ def _check_downloaded(path: Path, hashes: dict[str, list[str]] | None) -> bool:
     return True
 
 
-def unpack_archive(archive: Path, dest: Path) -> None:
+def unpack_archive(
+    archive: Path, dest: Path, reporter: UnpackReporter = noop_unpack_reporter
+) -> None:
     content_type = mimetypes.guess_type(str(archive))[0]
     if (
         content_type == "application/zip"
         or zipfile.is_zipfile(archive)
         or archive.suffix.lower() in ZIP_EXTENSIONS
     ):
-        _unzip_archive(archive, dest)
+        _unzip_archive(archive, dest, reporter=reporter)
     elif (
         content_type == "application/x-gzip"
         or tarfile.is_tarfile(archive)
         or archive.suffix.lower() in (TAR_EXTENSIONS + XZ_EXTENSIONS + BZ2_EXTENSIONS)
     ):
-        _untar_archive(archive, dest)
+        _untar_archive(archive, dest, reporter=reporter)
     else:
         raise UnpackError(f"Unknown archive type: {archive.name}")
 
 
-def _unzip_archive(filename: Path, location: Path) -> None:
+def _unzip_archive(filename: Path, location: Path, reporter: UnpackReporter) -> None:
     os.makedirs(location, exist_ok=True)
     zipfp = open(filename, "rb")
     with zipfile.ZipFile(zipfp, allowZip64=True) as zip:
         leading = has_leading_dir(zip.namelist())
-        for info in zip.infolist():
+        callback = functools.partial(reporter, filename, total=len(zip.infolist()))
+        for info in iter_with_callback(zip.infolist(), callback):
             name = info.filename
             fn = name
             if leading:
@@ -183,7 +208,7 @@ def _unzip_archive(filename: Path, location: Path) -> None:
                     set_extracted_file_to_default_mode_plus_executable(fn)
 
 
-def _untar_archive(filename: Path, location: Path) -> None:
+def _untar_archive(filename: Path, location: Path, reporter: UnpackReporter) -> None:
     """Untar the file (with path `filename`) to the destination `location`."""
     os.makedirs(location, exist_ok=True)
     lower_fn = str(filename).lower()
@@ -203,7 +228,8 @@ def _untar_archive(filename: Path, location: Path) -> None:
         mode = "r:*"
     with tarfile.open(filename, mode, encoding="utf-8") as tar:
         leading = has_leading_dir([member.name for member in tar.getmembers()])
-        for member in tar.getmembers():
+        callback = functools.partial(reporter, filename, total=len(tar.getmembers()))
+        for member in iter_with_callback(tar.getmembers(), callback):
             fn = member.name
             if leading:
                 fn = split_leading_dir(fn)[1]
@@ -261,6 +287,8 @@ def unpack_link(
     location: Path,
     hashes: dict[str, list[str]] | None = None,
     verbosity: int = 0,
+    download_reporter: DownloadReporter = noop_download_reporter,
+    unpack_reporter: UnpackReporter = noop_unpack_reporter,
 ) -> Path:
     """Unpack link into location.
 
@@ -302,13 +330,22 @@ def unpack_link(
                     resp.raise_for_status()
                 except HTTPError as e:
                     raise UnpackError(f"Download failed: {e}") from None
+                try:
+                    total = int(resp.headers["Content-Length"])
+                except (KeyError, ValueError, TypeError):
+                    total = None
                 if getattr(resp, "from_cache", False):
                     logger.info("Using cached %s", link)
                 else:
                     size = format_size(resp.headers.get("Content-Length", ""))
                     logger.info("Downloading %s (%s)", link, size)
                 with artifact.open("wb") as f:
-                    for chunk in resp.iter_content(chunk_size=READ_CHUNK_SIZE):
+                    callback = functools.partial(download_reporter, link, total=total)
+                    for chunk in iter_with_callback(
+                        resp.iter_content(chunk_size=READ_CHUNK_SIZE),
+                        callback,
+                        stepper=len,
+                    ):
                         if chunk:
                             validator.update(chunk)
                             f.write(chunk)
@@ -323,5 +360,5 @@ def unpack_link(
             os.replace(artifact, target_file)
         return target_file
 
-    unpack_archive(artifact, location)
+    unpack_archive(artifact, location, reporter=unpack_reporter)
     return location
