@@ -9,7 +9,7 @@ import sys
 import urllib.parse as parse
 import warnings
 from pathlib import Path
-from typing import Iterable, Iterator, Sequence, TypeVar
+from typing import Callable, Iterable, Iterator, Sequence, TypeVar
 from urllib.request import pathname2url, url2pathname
 
 WINDOWS = sys.platform == "win32"
@@ -188,7 +188,7 @@ def format_size(size: str) -> str:
         return f"{int(int_size)} bytes"
 
 
-T = TypeVar("T", covariant=True)
+T = TypeVar("T")
 
 
 class LazySequence(Sequence[T]):
@@ -255,3 +255,17 @@ def fix_legacy_specifier(specifier: str) -> str:
         return f"{operator}{version}"
 
     return _legacy_specifier_re.sub(fix_wildcard, specifier)
+
+
+def iter_with_callback(
+    iterable: Iterable[T],
+    callback: Callable[[int], None],
+    stepper: Callable[[T], int] = lambda _: 1,
+) -> Iterator[T]:
+    completed = 0
+    for item in iterable:
+        try:
+            yield item
+        finally:
+            completed += stepper(item)
+            callback(completed)
