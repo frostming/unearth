@@ -112,6 +112,19 @@ def test_evaluate_invalid_wheel_name(url):
     assert evaluator.evaluate_link(link) is None
 
 
+@pytest.mark.parametrize("loose", (True, False))
+def test_evaluate_link_loose_filename(loose: bool, monkeypatch: pytest.MonkeyPatch):
+    if loose:
+        monkeypatch.setenv("UNEARTH_LOOSE_FILENAME", "1")
+    link = Link("https://test.pypi.org/files/foo-2-2.tar.gz")
+    evaluator = Evaluator("foo")
+    package = evaluator.evaluate_link(link)
+    if loose:
+        assert package.version == "2-2"
+    else:
+        assert package is None
+
+
 @pytest.mark.parametrize(
     "link,expected",
     [

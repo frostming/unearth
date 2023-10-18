@@ -4,6 +4,7 @@ from __future__ import annotations
 import dataclasses as dc
 import hashlib
 import logging
+import os
 import sys
 from typing import Any
 
@@ -212,11 +213,31 @@ class Evaluator:
                         raise LinkMismatchError(
                             f"Unsupported archive format: {link.filename}"
                         )
-                version = parse_version_from_egg_info(egg_info, self._canonical_name)
-                if version is None:
-                    raise LinkMismatchError(
-                        f"Missing version in the filename {egg_info}"
+                LOOSE_FILENAME = os.getenv(
+                    "UNEARTH_LOOSE_FILENAME", "false"
+                ).lower() in ("1", "true")
+                if LOOSE_FILENAME:
+                    version = parse_version_from_egg_info(
+                        egg_info, self._canonical_name
                     )
+                    if version is None:
+                        raise LinkMismatchError(
+                            f"Missing version in the filename: {egg_info}"
+                        )
+                else:
+                    # For source releases, we know that the version should not contain
+                    # any hyphens, so we can split on the last hyphen to get the
+                    # project name.
+                    filename_prefix, has_version, version = egg_info.rpartition("-")
+                    if not has_version:
+                        raise LinkMismatchError(
+                            f"Missing version in the filename: {egg_info}"
+                        )
+                    if canonicalize_name(filename_prefix) != self._canonical_name:
+                        raise LinkMismatchError(
+                            f"The package name doesn't match {egg_info}, set env var "
+                            "UNEARTH_LOOSE_FILENAME=1 to allow legacy filename."
+                        )
                 try:
                     Version(version)
                 except InvalidVersion:
