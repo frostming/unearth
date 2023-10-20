@@ -221,7 +221,10 @@ class PackageFinder:
                 (self._tag_priorities.get(tag, pri - 1) for tag in file_tags),
                 default=pri - 1,
             )
-            if canonicalize_name(package.name) in self.prefer_binary:
+            if (
+                canonicalize_name(package.name) in self.prefer_binary
+                or ":all:" in self.prefer_binary
+            ):
                 prefer_binary = True
 
         return (
