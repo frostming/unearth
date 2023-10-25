@@ -269,3 +269,16 @@ def iter_with_callback(
         finally:
             completed += stepper(item)
             callback(completed)
+
+
+def commonprefix(*m: str) -> str:
+    """Given multiple pathnames, returns the longest common leading component"""
+    if not m:
+        return ""
+    m = tuple(map(os.fspath, m))
+    s1 = min(m)
+    s2 = max(m)
+    for i, c in enumerate(s1):
+        if c != s2[i]:
+            return s1[:i]
+    return s1

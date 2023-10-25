@@ -6,21 +6,29 @@ import logging
 import os
 import shutil
 import subprocess
-from typing import Any, Iterable, Optional, Tuple, cast
-from urllib.parse import urlparse
+from typing import Any, Callable, Iterable, Optional, Tuple, cast
+from urllib.parse import SplitResult, urlparse, urlsplit
 
 from requests import Response
 from requests.auth import AuthBase, HTTPBasicAuth
 from requests.models import PreparedRequest
 from requests.utils import get_netrc_auth
 
-from unearth.utils import split_auth_from_netloc, split_auth_from_url
+from unearth.utils import commonprefix, split_auth_from_url
 
 KEYRING_DISABLED = False
 
 AuthInfo = Tuple[str, str]
 MaybeAuth = Optional[Tuple[str, Optional[str]]]
 logger = logging.getLogger(__name__)
+
+
+def _expect_argument(func: Callable[..., Any], argname: str) -> bool:
+    """Return True if the function expects the argument."""
+    import inspect
+
+    sig = inspect.signature(func)
+    return argname in sig.parameters
 
 
 class KeyringBaseProvider(metaclass=abc.ABCMeta):
@@ -155,22 +163,36 @@ class MultiDomainBasicAuth(AuthBase):
         self._cached_passwords: dict[str, AuthInfo] = {}
         self._credentials_to_save: tuple[str, str, str] | None = None
 
-    def _get_auth_from_index_url(self, netloc: str) -> tuple[MaybeAuth, str | None]:
+    def _get_auth_from_index_url(self, url: str) -> tuple[MaybeAuth, str | None]:
         """Return the extracted auth and the original index URL matching
-        the requested netloc.
+        the requested url. The auth part should be already stripped from the URL.
 
         Returns None if no matching index was found, or if --no-index
         was specified by the user.
         """
-        if not netloc or not self.index_urls:
+        if not url or not self.index_urls:
             return None, None
 
-        for u in self.index_urls:
-            parsed = urlparse(u)
-            auth, index_netloc = split_auth_from_netloc(parsed.netloc)
-            if index_netloc == netloc:
-                return auth, u
-        return None, None
+        target = urlsplit(url.rstrip("/") + "/")
+        candidates: list[SplitResult] = []
+
+        for index in self.index_urls:
+            index = index.rstrip("/") + "/"
+            auth, url_no_auth = split_auth_from_url(index)
+            parsed = urlsplit(url_no_auth)
+            if parsed == target:
+                return auth, index
+
+            if target.netloc == parsed.netloc:
+                candidates.append(urlsplit(index))
+
+        if not candidates:
+            return None, None
+        best_match = max(
+            candidates, key=lambda x: commonprefix(x.path, target.path).rfind("/")
+        )
+        index = best_match.geturl()
+        return split_auth_from_url(index)[0], index
 
     def _get_new_credentials(
         self,
@@ -193,7 +215,12 @@ class MultiDomainBasicAuth(AuthBase):
                 return cast(AuthInfo, auth)
 
         # Find a matching index url for this request
-        index_auth, index_url = self._get_auth_from_index_url(netloc)
+        # XXX: a compatiblity layer to support old function signature
+        if _expect_argument(self._get_auth_from_index_url, "netloc"):
+            index_auth, index_url = self._get_auth_from_index_url(netloc)
+        else:
+            index_auth, index_url = self._get_auth_from_index_url(url)
+
         if index_url:
             logger.debug("Found index url %s", index_url)
 
