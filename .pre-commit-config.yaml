@@ -14,7 +14,7 @@ repos:
       - id: black
 
   - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+    rev: 5.13.0
     hooks:
       - id: isort
 
@@ -26,7 +26,7 @@ repos:
           - flake8-bugbear
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.7.0
+    rev: v1.7.1
     hooks:
       - id: mypy
         args: [src]
