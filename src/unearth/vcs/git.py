@@ -55,7 +55,8 @@ class Git(VersionControl):
             self.run_command(["clone", *flags, url, str(location)], extra_env=env)
 
         if rev is not None:
-            self.run_command(["checkout", "-q", rev], cwd=location)
+            self.run_command(["fetch", "-q", url, rev], cwd=location)
+            self.run_command(["checkout", "FETCH_HEAD"], cwd=location)
         revision = self.get_revision(location)
         logger.info("Resolved %s to commit %s", url, revision)
         self._update_submodules(location)
@@ -71,13 +72,16 @@ class Git(VersionControl):
         self, location: Path, rev: str | None, args: list[str | HiddenText]
     ) -> None:
         self.run_command(["fetch", "-q", "--tags"], cwd=location)
-        if rev is None:
-            rev = "HEAD"
-        try:
-            # try as if the rev is a branch name or HEAD
-            resolved = self._resolve_revision(location, f"origin/{rev}")
-        except UnpackError:
-            resolved = self._resolve_revision(location, rev)
+        if rev is not None:
+            url = self.get_remote_url(location)
+            self.run_command(["fetch", "-q", url, rev], cwd=location)
+            resolved = self._resolve_revision(location, "FETCH_HEAD")
+        else:
+            try:
+                # try as if the rev is a branch name or HEAD
+                resolved = self._resolve_revision(location, "origin/HEAD")
+            except UnpackError:
+                resolved = self._resolve_revision(location, "HEAD")
         logger.info("Updating %s to commit %s", display_path(location), resolved)
         self.run_command(["reset", "--hard", "-q", resolved], cwd=location)
 

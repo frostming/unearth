@@ -105,7 +105,8 @@ class Link:
 
     @property
     def filename(self) -> str:
-        return os.path.basename(unquote(self.parsed.path))
+        path = self.parsed.path.rsplit("@", 1)[0]
+        return os.path.basename(unquote(path))
 
     @property
     def dist_info_link(self) -> Link | None:
