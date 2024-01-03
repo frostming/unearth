@@ -95,6 +95,9 @@ class PackageFinder:
             self.add_index_url(url)
         for url in find_links:
             self.add_find_links(url)
+        # Add PyPI as the default index.
+        if not self.sources:
+            self.add_index_url("https://pypi.org/simple/")
         self.target_python = target_python or TargetPython()
         self.ignore_compatibility = ignore_compatibility
         self.no_binary = {canonicalize_name(name) for name in no_binary}
