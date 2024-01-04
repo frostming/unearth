@@ -113,6 +113,7 @@ class PyPISession(Session):
         retries: int = DEFAULT_MAX_RETRIES,
         trusted_hosts: Iterable[str] = (),
         ca_certificates: Path | None = None,
+        timeout: float | tuple[float, float] | urllib3.Timeout = 10,
     ) -> None:
         super().__init__()
 
@@ -130,6 +131,7 @@ class PyPISession(Session):
         self.mount("http://", self._insecure_adapter)
         self.mount("file://", LocalFSAdapter())
 
+        self.timeout = timeout
         self._trusted_host_ports: set[tuple[str, int | None]] = set()
 
         for host in trusted_hosts:
@@ -138,6 +140,11 @@ class PyPISession(Session):
 
         if ca_certificates is not None:
             self.set_ca_certificates(ca_certificates)
+
+    def send(self, request: PreparedRequest, **kwargs: Any) -> Response:
+        if kwargs.get("timeout") is None:
+            kwargs["timeout"] = self.timeout
+        return super().send(request, **kwargs)
 
     def set_ca_certificates(self, cert_file: Path):
         """
