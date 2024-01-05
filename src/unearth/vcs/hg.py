@@ -46,7 +46,7 @@ class Mercurial(VersionControl):
 
     def get_revision(self, location: Path) -> str:
         current_revision = self.run_command(
-            ["parents", "--template={rev}"],
+            ["parents", "--template={node}"],
             log_output=False,
             stdout_only=True,
             cwd=location,
