@@ -4,7 +4,7 @@ from __future__ import annotations
 import dataclasses as dc
 import os
 import pathlib
-import sys
+from functools import cached_property
 from typing import Any, cast
 from urllib.parse import ParseResult, unquote, urlparse
 
@@ -15,11 +15,6 @@ from unearth.utils import (
     split_auth_from_url,
     url_to_path,
 )
-
-if sys.version_info >= (3, 8):
-    from functools import cached_property
-else:
-    from cached_property import cached_property
 
 VCS_SCHEMA = ("git", "hg", "svn", "bzr")
 SUPPORTED_HASHES = ("sha1", "sha224", "sha384", "sha256", "sha512", "md5")
