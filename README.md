@@ -45,8 +45,8 @@ Get the best matching candidate for a requirement:
 >>> from unearth import PackageFinder
 >>> finder = PackageFinder(index_urls=["https://pypi.org/simple/"])
 >>> result = finder.find_best_match("flask>=2")
->>> result.best_candidate
-Package(name='flask', version='2.1.2', link=<Link https://files.pythonhosted.org/packages/ba/76/e9580e494eaf6f09710b0f3b9000c9c0363e44af5390be32bb0394165853/Flask-2.1.2-py3-none-any.whl#sha256=fad5b446feb0d6db6aec0c3184d16a8c1f6c3e464b511649c8918a9be100b4fe (from https://pypi.org/simple/flask)>)
+>>> result.best
+Package(name='flask', version='2.1.2')
 ```
 
 Using the CLI:
@@ -55,12 +55,13 @@ Using the CLI:
 $ unearth "flask>=2"
 {
   "name": "flask",
-  "version": "2.1.2",
+  "version": "3.0.0",
   "link": {
-    "url": "https://files.pythonhosted.org/packages/ba/76/e9580e494eaf6f09710b0f3b9000c9c0363e44af5390be32bb0394165853/Flask-2.1.2-py3-none-any.whl#sha256=fad5b446feb0d6db6aec0c3184d16a8c1f6c3e464b511649c8918a9be100b4fe",
-    "comes_from": "https://pypi.org/simple/flask",
+    "url": "https://files.pythonhosted.org/packages/36/42/015c23096649b908c809c69388a805a571a3bea44362fe87e33fc3afa01f/flask-3.0.0-py3-none-any.whl",
+    "comes_from": "https://pypi.org/simple/flask/",
     "yank_reason": null,
-    "requires_python": ">=3.7"
+    "requires_python": ">=3.8",
+    "metadata": "https://files.pythonhosted.org/packages/36/42/015c23096649b908c809c69388a805a571a3bea44362fe87e33fc3afa01f/flask-3.0.0-py3-none-any.whl.metadata"
   }
 }
 ```
