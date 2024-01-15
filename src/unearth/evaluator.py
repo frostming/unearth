@@ -6,7 +6,7 @@ import hashlib
 import logging
 import os
 import sys
-from typing import Any
+from typing import Any, Iterable
 
 import packaging.requirements
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
@@ -175,6 +175,16 @@ class Evaluator:
                     ),
                 )
 
+    def validate_wheel_tag(self, tags: Iterable[Tag]) -> bool:
+        """Check if the wheel tags are compatible with the target Python.
+
+        Args:
+            tags (Iterable[Tag]): The wheel tags to check.
+        """
+        if self.ignore_compatibility:
+            return True
+        return not set(tags).isdisjoint(self.target_python.supported_tags())
+
     def evaluate_link(self, link: Link) -> Package | None:
         """
         Evaluate the link and return the package if it matches or None if it doesn't.
@@ -193,9 +203,7 @@ class Evaluator:
                     raise LinkMismatchError(
                         f"The package name doesn't match {wheel_info[0]}"
                     )
-                if not self.ignore_compatibility and wheel_info[3].isdisjoint(
-                    self.target_python.supported_tags()
-                ):
+                if not self.validate_wheel_tag(wheel_info[3]):
                     raise LinkMismatchError(
                         "none of the wheel tags({}) are compatible".format(
                             ", ".join(sorted(str(tag) for tag in wheel_info[3]))
