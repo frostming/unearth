@@ -6,7 +6,6 @@ import functools
 import itertools
 import os
 import pathlib
-import warnings
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Iterable, NamedTuple, Sequence
 from urllib.parse import urljoin
@@ -142,10 +141,7 @@ class PackageFinder:
         self.sources.append({"url": url, "type": "find_links"})
 
     def build_evaluator(
-        self,
-        package_name: str,
-        allow_yanked: bool = False,
-        hashes: dict[str, list[str]] | None = None,
+        self, package_name: str, allow_yanked: bool = False
     ) -> Evaluator:
         """Build an evaluator for the given package name.
 
@@ -156,13 +152,6 @@ class PackageFinder:
         Returns:
             Evaluator: The evaluator for the given package name
         """
-        if hashes is not None:
-            warnings.warn(
-                "The evaluator no longer validates hashes, "
-                "please remove the hashes argument",
-                FutureWarning,
-                stacklevel=2,
-            )
         format_control = FormatControl(
             no_binary=self.no_binary, only_binary=self.only_binary
         )
