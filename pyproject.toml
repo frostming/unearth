@@ -41,8 +41,8 @@ keyring = [
 [project.scripts]
 unearth = "unearth.__main__:cli"
 
-[tool.pdm]
-version = {source = "scm"}
+[tool.pdm.version]
+source = "scm"
 
 [tool.pdm.build]
 package-dir = "src"
@@ -55,10 +55,18 @@ test = [
     "requests-wsgi-adapter>=0.4.1",
     "trustme>=0.9.0",
 ]
+doc = [
+    "furo",
+    "sphinx",
+    "myst-parser",
+    "sphinx-copybutton",
+    "sphinx-argparse",
+]
 
 [tool.pdm.scripts]
 test = "pytest tests/"
 lint = "pre-commit run --all-files"
+doc = "sphinx-build -b html docs {args:docs/_build}"
 
 [tool.black]
 line-length = 88

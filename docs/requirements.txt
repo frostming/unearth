@@ -1,7 +1,0 @@
-furo
-sphinx
-myst-parser
-sphinx-copybutton
-sphinx-argparse
-importlib-metadata ; python_version < "3.8"
-.
