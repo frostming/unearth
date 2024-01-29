@@ -1,4 +1,5 @@
 """Unpack the link to an installed wheel or source."""
+
 from __future__ import annotations
 
 import functools
@@ -32,12 +33,12 @@ if TYPE_CHECKING:
     from typing import Protocol
 
     class DownloadReporter(Protocol):
-        def __call__(self, link: Link, completed: int, total: int | None) -> None:
-            ...
+        def __call__(self, link: Link, completed: int, total: int | None) -> None: ...
 
     class UnpackReporter(Protocol):
-        def __call__(self, filename: Path, completed: int, total: int | None) -> None:
-            ...
+        def __call__(
+            self, filename: Path, completed: int, total: int | None
+        ) -> None: ...
 
 
 def noop_download_reporter(link: Link, completed: int, total: int | None) -> None:

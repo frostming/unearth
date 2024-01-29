@@ -1,4 +1,5 @@
 """Evaluate the links based on the given environment."""
+
 from __future__ import annotations
 
 import dataclasses as dc

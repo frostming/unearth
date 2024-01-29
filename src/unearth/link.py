@@ -1,4 +1,5 @@
 """Remote or local file link."""
+
 from __future__ import annotations
 
 import dataclasses as dc
@@ -59,9 +60,11 @@ class Link:
             "comes_from": self.comes_from,
             "yank_reason": self.yank_reason,
             "requires_python": self.requires_python,
-            "metadata": self.dist_info_link.url_without_fragment
-            if self.dist_info_link
-            else None,
+            "metadata": (
+                self.dist_info_link.url_without_fragment
+                if self.dist_info_link
+                else None
+            ),
         }
 
     def __ident(self) -> tuple:

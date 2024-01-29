@@ -1,4 +1,5 @@
 """Configuration for the pytest test suite."""
+
 import os
 from ssl import SSLContext
 from unittest import mock

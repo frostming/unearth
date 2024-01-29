@@ -1,4 +1,5 @@
 """Collect links from simple index or find links location."""
+
 from __future__ import annotations
 
 import functools
