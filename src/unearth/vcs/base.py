@@ -58,7 +58,7 @@ class VersionControl(abc.ABC):
         if extra_env:
             env = dict(os.environ, **extra_env)
         try:
-            cmd = [self.name] + cmd  # type: ignore
+            cmd = [self.name, *cmd]
             display_cmd = subprocess.list2cmdline(map(str, cmd))
             logger.debug("Running command %s", display_cmd)
             result = subprocess.run(
@@ -248,7 +248,7 @@ class VcsSupport:
         try:
             return self._registry[name](verbosity=verbosity)
         except KeyError:
-            raise VCSBackendError(name)
+            raise VCSBackendError(name) from None
 
 
 vcs_support = VcsSupport()

@@ -65,7 +65,7 @@ class Subversion(VersionControl):
             flag = "--quiet"
         else:
             flag = ""
-        cmd_args = [
+        cmd_args: list[str | HiddenText] = [
             "checkout",
             flag,
             "--non-interactive",
@@ -73,18 +73,18 @@ class Subversion(VersionControl):
             url,
             str(location),
         ]
-        self.run_command(cmd_args)  # type: ignore
+        self.run_command(cmd_args)
 
     def update(
         self, location: Path, rev: str | None, args: list[str | HiddenText]
     ) -> None:
-        cmd_args = [
+        cmd_args: list[str] = [
             "update",
             "--non-interactive",
             *self.get_rev_args(rev),
             str(location),
         ]
-        self.run_command(cmd_args)  # type: ignore
+        self.run_command(cmd_args)
 
     def get_remote_url(self, location: Path) -> str:
         orig_location = location

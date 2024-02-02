@@ -79,7 +79,7 @@ class LocalFSAdapter(requests.adapters.BaseAdapter):
             )
 
             resp.raw = open(path, "rb")
-            resp.close = resp.raw.close  # type: ignore
+            resp.close = resp.raw.close  # type: ignore[method-assign]
 
         return resp
 

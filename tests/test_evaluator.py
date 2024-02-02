@@ -120,7 +120,7 @@ def test_evaluate_link_loose_filename(loose: bool, monkeypatch: pytest.MonkeyPat
     evaluator = Evaluator("foo")
     package = evaluator.evaluate_link(link)
     if loose:
-        assert package.version == "2-2"
+        assert package is not None and package.version == "2-2"
     else:
         assert package is None
 

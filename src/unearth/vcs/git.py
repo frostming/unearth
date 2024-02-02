@@ -97,7 +97,9 @@ class Git(VersionControl):
         try:
             found_remote = remotes[0]
         except IndexError:
-            raise UnpackError(f"Remote not found for {display_path(location)}")
+            raise UnpackError(
+                f"Remote not found for {display_path(location)}"
+            ) from None
 
         for remote in remotes:
             if remote.startswith("remote.origin.url "):

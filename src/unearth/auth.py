@@ -51,7 +51,7 @@ class KeyringModuleProvider(KeyringBaseProvider):
     """Keyring provider that uses the keyring module."""
 
     def __init__(self) -> None:
-        import keyring  # type: ignore
+        import keyring
 
         self.keyring = keyring
 
@@ -365,7 +365,7 @@ class MultiDomainBasicAuth(AuthBase):
             req.register_hook("response", self.save_credentials)
 
         # Send our new request
-        new_resp = resp.connection.send(req, **kwargs)  # type: ignore
+        new_resp = resp.connection.send(req, **kwargs)  # type: ignore[attr-defined]
         new_resp.history.append(resp)
 
         return new_resp

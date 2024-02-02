@@ -34,8 +34,14 @@ class Bazaar(VersionControl):
             flag = ""
         else:
             flag = f"-{'v'*self.verbosity}"
-        cmd_args = ["branch", flag, *self.get_rev_args(rev), url, str(location)]
-        self.run_command(cmd_args)  # type: ignore
+        cmd_args: list[str | HiddenText] = [
+            "branch",
+            flag,
+            *self.get_rev_args(rev),
+            url,
+            str(location),
+        ]
+        self.run_command(cmd_args)
 
     def update(
         self, location: Path, rev: str | None, args: list[str | HiddenText]

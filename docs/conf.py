@@ -10,10 +10,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-try:
-    import importlib.metadata as importlib_metadata
-except ModuleNotFoundError:
-    import importlib_metadata
+import importlib.metadata
 
 # -- Project information -----------------------------------------------------
 
@@ -22,7 +19,7 @@ copyright = "2022, Frost Ming"
 author = "Frost Ming"
 
 # The full version, including alpha/beta/rc tags
-release = importlib_metadata.version("unearth")
+release = importlib.metadata.version("unearth")
 
 # -- General configuration ---------------------------------------------------
 

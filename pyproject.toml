@@ -69,30 +69,28 @@ test = "pytest tests/"
 lint = "pre-commit run --all-files"
 doc = "sphinx-build -b html docs {args:docs/_build}"
 
-[tool.black]
+[tool.ruff]
 line-length = 88
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-  | tests/fixtures
-)/
-'''
+target-version = "py38"
 
-[tool.isort]
-profile = "black"
-atomic = true
-skip_glob = ["*/setup.py"]
-filter_files = true
-known_first_party = ["unearth"]
+[tool.ruff.lint]
+extend-select = [
+  "I",    # isort
+  "B",    # flake8-bugbear
+  "C4",   # flake8-comprehensions
+  "PGH",  # pygrep-hooks
+  "RUF",  # ruff
+  "W",    # pycodestyle
+  "YTT",  # flake8-2020
+]
+extend-ignore = ["B018", "B019"]
+exclude = ["tests/fixtures"]
+
+[tool.ruff.mccabe]
+max-complexity = 10
+
+[tool.ruff.isort]
+known-first-party = ["unearth"]
 
 [tool.pytest.ini_options]
 filterwarnings = [

@@ -163,10 +163,10 @@ class Evaluator:
                 requires_python = SpecifierSet(
                     fix_legacy_specifier(link.requires_python)
                 )
-            except InvalidSpecifier:
+            except InvalidSpecifier as e:
                 raise LinkMismatchError(
                     f"Invalid requires-python: {link.requires_python}"
-                )
+                ) from e
             if not requires_python.contains(py_version, True):
                 raise LinkMismatchError(
                     "The target python version({}) doesn't match "
@@ -198,7 +198,7 @@ class Evaluator:
                 try:
                     wheel_info = parse_wheel_filename(link.filename)
                 except (InvalidWheelFilename, InvalidVersion) as e:
-                    raise LinkMismatchError(str(e))
+                    raise LinkMismatchError(str(e)) from None
                 if self._canonical_name != wheel_info[0]:
                     raise LinkMismatchError(
                         f"The package name doesn't match {wheel_info[0]}"
@@ -251,7 +251,7 @@ class Evaluator:
                 except InvalidVersion:
                     raise LinkMismatchError(
                         f"Invalid version in the filename {egg_info}: {version}"
-                    )
+                    ) from None
         except LinkMismatchError as e:
             logger.debug("Skipping link %s: %s", link, e)
             return None
