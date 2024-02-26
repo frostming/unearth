@@ -9,6 +9,7 @@ from html.parser import HTMLParser
 from typing import Iterable, NamedTuple
 from urllib import parse
 
+from requests.exceptions import ConnectionError
 from requests.models import Response
 
 from unearth.link import Link
@@ -174,21 +175,25 @@ def _get_html_response(session: PyPISession, location: Link) -> Response:
         # the link is an HTML page to avoid downloading a large file.
         _ensure_index_response(session, location)
 
-    resp = session.get(
-        location.normalized,
-        headers={
-            "Accept": ", ".join(
-                [
-                    "application/vnd.pypi.simple.v1+json",
-                    "application/vnd.pypi.simple.v1+html; q=0.1",
-                    "text/html; q=0.01",
-                ]
-            ),
-            # Don't cache the /simple/{package} page, to ensure it gets updated
-            # immediately when a new release is uploaded.
-            "Cache-Control": "max-age=0",
-        },
-    )
+    try:
+        resp = session.get(
+            location.normalized,
+            headers={
+                "Accept": ", ".join(
+                    [
+                        "application/vnd.pypi.simple.v1+json",
+                        "application/vnd.pypi.simple.v1+html; q=0.1",
+                        "text/html; q=0.01",
+                    ]
+                ),
+                # Don't cache the /simple/{package} page, to ensure it gets updated
+                # immediately when a new release is uploaded.
+                "Cache-Control": "max-age=0",
+            },
+        )
+    except ConnectionError as e:
+        raise LinkCollectError(f"Connection Error: {e}")
+
     _check_for_status(resp)
     _ensure_index_content_type(resp)
     return resp
