@@ -1,4 +1,5 @@
 """Remote or local file link."""
+
 from __future__ import annotations
 
 import dataclasses as dc
