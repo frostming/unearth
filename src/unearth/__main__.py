@@ -1,4 +1,5 @@
 """The command-line interface for the unearth package."""
+
 from __future__ import annotations
 
 import argparse

@@ -1,4 +1,5 @@
 """A package should contain a link to the actual file."""
+
 from __future__ import annotations
 
 import functools

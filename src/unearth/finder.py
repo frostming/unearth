@@ -1,4 +1,5 @@
 """The main class for the unearth package."""
+
 from __future__ import annotations
 
 import atexit
