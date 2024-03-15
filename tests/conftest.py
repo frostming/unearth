@@ -102,6 +102,6 @@ def session():
 
 
 @pytest.fixture(params=["html", "json"])
-def content_type(request, monkeypatch):
+def content_type(request, monkeypatch) -> str:
     monkeypatch.setenv("INDEX_RETURN_TYPE", request.param)
     return request.param

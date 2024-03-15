@@ -7,6 +7,7 @@ import hashlib
 import logging
 import os
 import sys
+from datetime import datetime
 from typing import Any, Iterable
 
 import packaging.requirements
@@ -135,11 +136,12 @@ class Evaluator:
     """Evaluate the links based on the given environment.
 
     Args:
-        package_name (str): The links must match the package name
-        target_python (TargetPython): The links must match the target Python
-        ignore_compatibility (bool): Whether to ignore the compatibility check
-        allow_yanked (bool): Whether to allow yanked candidates
-        format_control (bool): Format control flags
+        package_name: The links must match the package name
+        target_python: The links must match the target Python
+        ignore_compatibility: Whether to ignore the compatibility check
+        allow_yanked: Whether to allow yanked candidates
+        format_control: Format control flags
+        exclude_newer_than: Exclude the candidates newer than this date
     """
 
     package_name: str
@@ -147,6 +149,7 @@ class Evaluator:
     ignore_compatibility: bool = False
     allow_yanked: bool = False
     format_control: FormatControl = dc.field(default_factory=FormatControl)
+    exclude_newer_than: datetime | None = None
 
     def __post_init__(self) -> None:
         self._canonical_name = canonicalize_name(self.package_name)
@@ -155,6 +158,17 @@ class Evaluator:
         if link.yank_reason is not None and not self.allow_yanked:
             yank_reason = f"due to {link.yank_reason}" if link.yank_reason else ""
             raise LinkMismatchError(f"Yanked {yank_reason}")
+
+    def check_upload_time(self, link: Link) -> None:
+        if self.exclude_newer_than is not None:
+            if link.upload_time is None:
+                raise LinkMismatchError(
+                    "Upload time is not available but exclude_newer_than is set"
+                )
+            if link.upload_time > self.exclude_newer_than:
+                raise LinkMismatchError(
+                    f"Upload time is newer than {self.exclude_newer_than}"
+                )
 
     def check_requires_python(self, link: Link) -> None:
         if not self.ignore_compatibility and link.requires_python:
@@ -193,6 +207,7 @@ class Evaluator:
         try:
             self.format_control.check_format(link, self.package_name)
             self.check_yanked(link)
+            self.check_upload_time(link)
             self.check_requires_python(link)
             version: str | None = None
             if link.is_wheel:

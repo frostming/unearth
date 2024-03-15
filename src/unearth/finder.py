@@ -7,6 +7,7 @@ import functools
 import itertools
 import os
 import pathlib
+from datetime import datetime
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Iterable, NamedTuple, Sequence
 from urllib.parse import urljoin
@@ -58,21 +59,23 @@ class PackageFinder:
     """The main class for the unearth package.
 
     Args:
-        session (PyPISession|None): The session to use for the finder.
+        session: The session to use for the finder.
             If not provided, a temporary session will be created.
-        index_urls (Iterable[str]): The index URLs to search for packages.
-        find_links (Iterable[str]): The links to search for packages.
-        trusted_hosts: (Iterable[str]): The trusted hosts.
-        target_python (TargetPython): The links must match
+        index_urls: The index URLs to search for packages.
+        find_links: The links to search for packages.
+        trusted_hosts:: The trusted hosts.
+        target_python: The links must match
             the target Python
-        ignore_compatibility (bool): Whether to ignore the compatibility check
-        no_binary (Iterable[str]): The names of the packages to disallow wheels
-        only_binary (Iterable[str]): The names of the packages to disallow non-wheels
-        prefer_binary (Iterable[str]): The names of the packages to prefer binary
+        ignore_compatibility: Whether to ignore the compatibility check
+        no_binary: The names of the packages to disallow wheels
+        only_binary: The names of the packages to disallow non-wheels
+        prefer_binary: The names of the packages to prefer binary
             distributions even if newer sdist pacakges exist.
-        respect_source_order (bool): If True, packages from the source coming earlier
+        respect_source_order: If True, packages from the source coming earlier
             are more preferred, even if they have lower versions.
-        verbosity (int): The verbosity level.
+        verbosity: The verbosity level.
+        exclude_newer_than: A datetime that when provided, excludes any version
+            newer than it.
     """
 
     def __init__(
@@ -89,6 +92,7 @@ class PackageFinder:
         prefer_binary: Iterable[str] = (),
         respect_source_order: bool = False,
         verbosity: int = 0,
+        exclude_newer_than: datetime | None = None,
     ) -> None:
         self.sources: list[Source] = []
         for url in index_urls:
@@ -107,6 +111,7 @@ class PackageFinder:
         self._session = session
         self.respect_source_order = respect_source_order
         self.verbosity = verbosity
+        self.exclude_newer_than = exclude_newer_than
 
         self._tag_priorities = {
             tag: i for i, tag in enumerate(self.target_python.supported_tags())
@@ -147,8 +152,8 @@ class PackageFinder:
         """Build an evaluator for the given package name.
 
         Args:
-            package_name (str): The desired package name
-            allow_yanked (bool): Whether to allow yanked candidates.
+            package_name : The desired package name
+            allow_yanked: Whether to allow yanked candidates.
 
         Returns:
             Evaluator: The evaluator for the given package name
@@ -162,6 +167,7 @@ class PackageFinder:
             ignore_compatibility=self.ignore_compatibility,
             allow_yanked=allow_yanked,
             format_control=format_control,
+            exclude_newer_than=self.exclude_newer_than,
         )
 
     def _build_index_page_link(self, index_url: str, package_name: str) -> Link:
@@ -229,18 +235,16 @@ class PackageFinder:
         )
 
     def _find_packages(
-        self,
-        package_name: str,
-        allow_yanked: bool = False,
+        self, package_name: str, allow_yanked: bool = False
     ) -> Iterable[Package]:
         """Find all packages with the given name.
 
         Args:
-            package_name (str): The desired package name
-            allow_yanked (bool): Whether to allow yanked candidates.
+            package_name: The desired package name
+            allow_yanked: Whether to allow yanked candidates.
 
         Returns:
-            Iterable[Package]: The packages with the given name, sorted by best match.
+            The packages with the given name, sorted by best match.
         """
         evaluator = self.build_evaluator(package_name, allow_yanked)
 

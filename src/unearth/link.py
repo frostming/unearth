@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses as dc
 import os
 import pathlib
+from datetime import datetime
 from functools import cached_property
 from typing import Any, cast
 from urllib.parse import ParseResult, unquote, urlparse
@@ -43,6 +44,7 @@ class Link:
     requires_python: str | None = None
     dist_info_metadata: bool | dict[str, str] | None = None
     hashes: dict[str, str] | None = None
+    upload_time: datetime | None = None
     vcs: str | None = dc.field(init=False, default=None)
 
     def __post_init__(self) -> None:

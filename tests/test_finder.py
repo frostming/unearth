@@ -1,3 +1,5 @@
+import datetime
+
 import pytest
 
 from unearth import Link
@@ -227,3 +229,23 @@ def test_download_package_file(session, tmp_path):
     filename, completed, total = unpack_reports[-1]
     assert completed == total
     assert filename == downloaded
+
+
+def test_exclude_newer_than(session, content_type):
+    finder = PackageFinder(
+        session=session,
+        index_urls=[DEFAULT_INDEX_URL],
+        ignore_compatibility=True,
+        exclude_newer_than=datetime.datetime(
+            2024, 1, 31, 0, 0, 0, 0, tzinfo=datetime.timezone.utc
+        ),
+    )
+    matches = finder.find_matches("black")
+    # black doesn't support upload_time field
+    assert not matches
+
+    matches = finder.find_matches("click")
+    if content_type == "json":  # only json api supports upload_time
+        assert len(matches) == 2
+    else:
+        assert not matches

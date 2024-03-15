@@ -6,6 +6,7 @@ import functools
 import json
 import logging
 import mimetypes
+from datetime import datetime
 from html.parser import HTMLParser
 from typing import Iterable, NamedTuple
 from urllib import parse
@@ -103,6 +104,9 @@ def parse_json_response(page: IndexPage) -> Iterable[Link]:
             requires_python=requires_python,
             dist_info_metadata=dist_info_metadata,
             hashes=hashes,
+            upload_time=datetime.fromisoformat(upload_time.replace("Z", "+00:00"))
+            if (upload_time := file.get("upload-time"))
+            else None,
         )
 
 
