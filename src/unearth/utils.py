@@ -283,3 +283,25 @@ def commonprefix(*m: str) -> str:
         if c != s2[i]:
             return s1[:i]
     return s1
+
+
+def get_netrc_auth(url: str) -> tuple[str, str] | None:
+    """Get the auth for the given url from the netrc file."""
+    try:
+        from netrc import netrc
+    except ImportError:
+        return None
+    from httpx import URL
+
+    hostname = URL(url).host
+
+    try:
+        authenticator = netrc(os.getenv("NETRC"))
+    except (FileNotFoundError, TypeError):
+        return None
+    info = authenticator.authenticators(hostname)
+
+    if info is None:
+        return None
+
+    return info[0], info[2]

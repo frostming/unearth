@@ -7,15 +7,17 @@ import functools
 import itertools
 import os
 import pathlib
+import warnings
 from datetime import datetime
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Iterable, NamedTuple, Sequence
+from typing import TYPE_CHECKING, Any, Iterable, NamedTuple, Sequence
 from urllib.parse import urljoin
 
 import packaging.requirements
 from packaging.utils import BuildTag, canonicalize_name, parse_wheel_filename
 from packaging.version import parse as parse_version
 
+from unearth.auth import MultiDomainBasicAuth
 from unearth.collector import collect_links_from_location
 from unearth.evaluator import (
     Evaluator,
@@ -26,9 +28,10 @@ from unearth.evaluator import (
     is_equality_specifier,
     validate_hashes,
 )
+from unearth.fetchers import Fetcher
+from unearth.fetchers.sync import PyPIClient
 from unearth.link import Link
 from unearth.preparer import noop_download_reporter, noop_unpack_reporter, unpack_link
-from unearth.session import PyPISession
 from unearth.utils import LazySequence
 
 if TYPE_CHECKING:
@@ -42,6 +45,21 @@ if TYPE_CHECKING:
 
 else:
     Source = dict
+
+
+def _check_legacy_session(session: Any) -> None:
+    try:
+        from requests import Session
+    except ModuleNotFoundError:
+        return
+
+    if isinstance(session, Session):
+        warnings.warn(
+            "The legacy requests.Session is used, which is deprecated and will be removed in the next release. "
+            "Please use `httpx.Client` instead. ",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
 
 class BestMatch(NamedTuple):
@@ -80,7 +98,7 @@ class PackageFinder:
 
     def __init__(
         self,
-        session: PyPISession | None = None,
+        session: Fetcher | None = None,
         *,
         index_urls: Iterable[str] = (),
         find_links: Iterable[str] = (),
@@ -108,6 +126,7 @@ class PackageFinder:
         self.only_binary = {canonicalize_name(name) for name in only_binary}
         self.prefer_binary = {canonicalize_name(name) for name in prefer_binary}
         self.trusted_hosts = trusted_hosts
+        _check_legacy_session(session)
         self._session = session
         self.respect_source_order = respect_source_order
         self.verbosity = verbosity
@@ -118,14 +137,13 @@ class PackageFinder:
         }
 
     @property
-    def session(self) -> PyPISession:
+    def session(self) -> Fetcher:
         if self._session is None:
             index_urls = [
                 source["url"] for source in self.sources if source["type"] == "index"
             ]
-            session = PyPISession(
-                index_urls=index_urls, trusted_hosts=self.trusted_hosts
-            )
+            session = PyPIClient(trusted_hosts=self.trusted_hosts)
+            session.auth = MultiDomainBasicAuth(index_urls=index_urls)
             atexit.register(session.close)
             self._session = session
         return self._session

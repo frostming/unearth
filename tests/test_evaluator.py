@@ -24,17 +24,6 @@ SOURCE_LINKS = [
 ]
 
 
-@pytest.fixture()
-def session():
-    from unearth.session import PyPISession
-
-    sess = PyPISession()
-    try:
-        yield sess
-    finally:
-        sess.close()
-
-
 @pytest.mark.parametrize("link", BINARY_LINKS)
 def test_only_binary_is_allowed(link):
     format_control = FormatControl(only_binary={"foo"})
@@ -175,7 +164,9 @@ def test_evaluate_against_missing_version(link):
 def test_evaluate_against_allowed_hashes(url, match, session):
     package = Package("click", "8.1.3", link=Link(url))
     result = validate_hashes(
-        package, {"sha256": ["1234567890abcdef", "fedcba0987654321"]}, session=session
+        package,
+        {"sha256": ["1234567890abcdef", "fedcba0987654321"]},
+        session=session,
     )
     assert result is match
 
@@ -200,7 +191,7 @@ def test_evaluate_allow_all_hashes(url, session):
         "https://test.pypi.org/files/click-8.1.3-py3-none-any.whl#md5=1111222",
     ],
 )
-def test_retrieve_hash_from_internet(pypi, session, url):
+def test_retrieve_hash_from_internet(pypi_session, url):
     link = Link(url)
     package = Package("click", "8.1.3", link=link)
     assert validate_hashes(
@@ -210,7 +201,7 @@ def test_retrieve_hash_from_internet(pypi, session, url):
                 "bb4d8133cb15a609f44e8213d9b391b0809795062913b383c62be0ee95b1db48"
             ]
         },
-        session=session,
+        session=pypi_session,
     )
     hash_name, hash = next(iter(link.hashes.items()))
     assert hash_name == "sha256"

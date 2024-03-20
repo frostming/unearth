@@ -13,7 +13,7 @@ def test(session):
 
 @nox.session(python="3.11")
 def docs(session):
-    session.install("-r", "docs/requirements.txt")
+    session.run("pdm", "install", "-Gdoc", external=True)
 
     # Generate documentation into `build/docs`
     session.run("sphinx-build", "-n", "-W", "-b", "html", "docs/", "build/docs")
@@ -21,8 +21,7 @@ def docs(session):
 
 @nox.session(name="docs-live", python="3.11")
 def docs_live(session):
-    session.install("-r", "docs/requirements.txt")
-    session.install("-e", ".")
+    session.run("pdm", "install", "-Gdoc", external=True)
     session.install("sphinx-autobuild")
 
     session.run(
