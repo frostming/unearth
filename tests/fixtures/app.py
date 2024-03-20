@@ -27,7 +27,7 @@ INDEX_TEMPLATE = """\
 
 @bp.route("/files/<path:path>")
 def package_file(path):
-    return flask.send_from_directory(BASE_DIR / "files", path)
+    return flask.send_from_directory(BASE_DIR / "files", path, as_attachment=True)
 
 
 @bp.route("/simple/<package>")

@@ -20,8 +20,8 @@ from packaging.utils import (
     parse_wheel_filename,
 )
 from packaging.version import InvalidVersion, Version
-from requests import Session
 
+from unearth.fetchers import Fetcher
 from unearth.link import Link
 from unearth.pep425tags import get_supported
 from unearth.utils import (
@@ -308,10 +308,10 @@ def evaluate_package(
     return True
 
 
-def _get_hash(link: Link, hash_name: str, session: Session) -> str:
+def _get_hash(link: Link, hash_name: str, session: Fetcher) -> str:
     hasher = hashlib.new(hash_name)
-    with session.get(link.normalized, stream=True) as resp:
-        for chunk in resp.iter_content(chunk_size=1024 * 8):
+    with session.get_stream(link.normalized) as resp:
+        for chunk in resp.iter_bytes(chunk_size=1024 * 8):
             hasher.update(chunk)
     digest = hasher.hexdigest()
     if not link.hashes:
@@ -321,7 +321,7 @@ def _get_hash(link: Link, hash_name: str, session: Session) -> str:
 
 
 def validate_hashes(
-    package: Package, hashes: dict[str, list[str]], session: Session
+    package: Package, hashes: dict[str, list[str]], session: Fetcher
 ) -> bool:
     if not hashes:
         return True

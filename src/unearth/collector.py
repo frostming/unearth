@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import ipaddress
 import json
 import logging
 import mimetypes
@@ -11,10 +12,8 @@ from html.parser import HTMLParser
 from typing import Iterable, NamedTuple
 from urllib import parse
 
-from requests.models import Response
-
+from unearth.fetchers import Fetcher, Response
 from unearth.link import Link
-from unearth.session import PyPISession
 from unearth.utils import is_archive_file, path_to_url
 
 SUPPORTED_CONTENT_TYPES = (
@@ -49,6 +48,45 @@ class IndexHTMLParser(HTMLParser):
                 self.base_url = base_url
         elif tag == "a":
             self.anchors.append(dict(attrs))
+
+
+def _compare_origin_part(allowed: str, actual: str) -> bool:
+    return allowed == "*" or allowed == actual
+
+
+def is_secure_origin(fetcher: Fetcher, location: Link) -> bool:
+    """
+    Determine if the origin is a trusted host.
+
+    Args:
+        location (Link): The location to check.
+    """
+    _, _, scheme = location.parsed.scheme.rpartition("+")
+    host, port = location.parsed.hostname or "", location.parsed.port
+    for secure_scheme, secure_host, secure_port in fetcher.iter_secure_origins():
+        if not _compare_origin_part(secure_scheme, scheme):
+            continue
+        try:
+            addr = ipaddress.ip_address(host)
+            network = ipaddress.ip_network(secure_host)
+        except ValueError:
+            # Either addr or network is invalid
+            if not _compare_origin_part(secure_host, host):
+                continue
+        else:
+            if addr not in network:
+                continue
+
+        if not _compare_origin_part(secure_port, "*" if port is None else str(port)):
+            continue
+        # We've got here, so all the parts match
+        return True
+
+    logger.warning(
+        "Skipping %s for not being trusted, please add it to `trusted_hosts` list",
+        location.redacted,
+    )
+    return False
 
 
 def parse_html_page(page: IndexPage) -> Iterable[Link]:
@@ -111,7 +149,7 @@ def parse_json_response(page: IndexPage) -> Iterable[Link]:
 
 
 def collect_links_from_location(
-    session: PyPISession, location: Link, expand: bool = False
+    session: Fetcher, location: Link, expand: bool = False
 ) -> Iterable[Link]:
     """Collect package links from a remote URL or local path.
 
@@ -141,7 +179,7 @@ def collect_links_from_location(
 
 
 @functools.lru_cache(maxsize=None)
-def fetch_page(session: PyPISession, location: Link) -> IndexPage:
+def fetch_page(session: Fetcher, location: Link) -> IndexPage:
     if location.is_vcs:
         raise LinkCollectError("It is a VCS link.")
     resp = _get_html_response(session, location)
@@ -149,12 +187,12 @@ def fetch_page(session: PyPISession, location: Link) -> IndexPage:
     cache_text = " (from cache)" if from_cache else ""
     logger.debug("Fetching HTML page %s%s", location.redacted, cache_text)
     return IndexPage(
-        Link(resp.url), resp.content, resp.encoding, resp.headers["Content-Type"]
+        Link(str(resp.url)), resp.content, resp.encoding, resp.headers["Content-Type"]
     )
 
 
-def _collect_links_from_index(session: PyPISession, location: Link) -> Iterable[Link]:
-    if not session.is_secure_origin(location):
+def _collect_links_from_index(session: Fetcher, location: Link) -> Iterable[Link]:
+    if not is_secure_origin(session, location):
         return []
     try:
         page = fetch_page(session, location)
@@ -173,7 +211,7 @@ def _is_html_file(file_url: str) -> bool:
     return mimetypes.guess_type(file_url, strict=False)[0] == "text/html"
 
 
-def _get_html_response(session: PyPISession, location: Link) -> Response:
+def _get_html_response(session: Fetcher, location: Link) -> Response:
     if is_archive_file(location.filename):
         # If the URL looks like a file, send a HEAD request to ensure
         # the link is an HTML page to avoid downloading a large file.
@@ -199,7 +237,7 @@ def _get_html_response(session: PyPISession, location: Link) -> Response:
     return resp
 
 
-def _ensure_index_response(session: PyPISession, location: Link) -> None:
+def _ensure_index_response(session: Fetcher, location: Link) -> None:
     if location.parsed.scheme not in {"http", "https"}:
         raise LinkCollectError(
             "NotHTTP: the file looks like an archive but its content-type "
@@ -212,7 +250,10 @@ def _ensure_index_response(session: PyPISession, location: Link) -> None:
 
 
 def _check_for_status(resp: Response) -> None:
-    reason = resp.reason
+    if hasattr(resp, "reason"):
+        reason = resp.reason
+    else:
+        reason = resp.reason_phrase
 
     if isinstance(reason, bytes):
         try:

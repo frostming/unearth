@@ -6,15 +6,19 @@ import logging
 import os
 import shutil
 import subprocess
-from typing import Any, Callable, Iterable, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Optional, Tuple, cast
 from urllib.parse import SplitResult, urlparse, urlsplit
 
-from requests import Response
-from requests.auth import AuthBase, HTTPBasicAuth
-from requests.models import PreparedRequest
-from requests.utils import get_netrc_auth
+from httpx import URL, Auth, BasicAuth
 
-from unearth.utils import commonprefix, split_auth_from_url
+from unearth.utils import commonprefix, get_netrc_auth, split_auth_from_url
+
+if TYPE_CHECKING:
+    from typing import Any, Callable, Generator, Iterable
+
+    from httpx import Request, Response
+    from requests import Response as RequestsResponse
+    from requests.models import PreparedRequest
 
 KEYRING_DISABLED = False
 
@@ -155,7 +159,9 @@ def get_keyring_auth(url: str | None, username: str | None) -> AuthInfo | None:
         return None
 
 
-class MultiDomainBasicAuth(AuthBase):
+class MultiDomainBasicAuth(Auth):
+    """A multi-domain HTTP basic authentication handler supporting both requests and httpx"""
+
     def __init__(self, prompting: bool = True, index_urls: Iterable[str] = ()) -> None:
         self.prompting = prompting
         self.index_urls = list(index_urls)
@@ -286,6 +292,8 @@ class MultiDomainBasicAuth(AuthBase):
 
     def __call__(self, req: PreparedRequest) -> PreparedRequest:
         # Get credentials for this request
+        from requests.auth import HTTPBasicAuth
+
         url, username, password = self._get_url_and_credentials(cast(str, req.url))
         req.url = url
 
@@ -296,6 +304,56 @@ class MultiDomainBasicAuth(AuthBase):
         req.register_hook("response", self.handle_401)
 
         return req
+
+    def auth_flow(self, request: Request) -> Generator[Request, Response, None]:
+        url, username, password = self._get_url_and_credentials(str(request.url))
+        request.url = URL(url)
+
+        if username is not None and password is not None:
+            basic_auth = BasicAuth(username, password)
+            request = next(basic_auth.auth_flow(request))
+
+        response = yield request
+
+        if response.status_code != 401:
+            return
+
+        # Query the keyring for credentials:
+        username, password = self._get_new_credentials(
+            url, allow_netrc=False, allow_keyring=True
+        )
+
+        # Prompt the user for a new username and password
+        save = False
+        netloc = response.url.netloc.decode()
+        if not username and not password:
+            # We are not able to prompt the user so simply return the response
+            if not self.prompting:
+                return
+
+            username, password, save = self._prompt_for_password(netloc)
+
+        # Store the new username and password to use for future requests
+        self._credentials_to_save = None
+        if username is not None and password is not None:
+            self._cached_passwords[netloc] = (username, password)
+
+            # Prompt to save the password to keyring
+            if save and self._should_save_password_to_keyring():
+                self._credentials_to_save = (netloc, username, password)
+
+        # Add our new username and password to the request
+        basic_auth = BasicAuth(username or "", password or "")
+        request = next(basic_auth.auth_flow(request))
+
+        response = yield request
+        self.warn_on_401(response)
+
+        # On successful request, save the credentials that were used to
+        # keyring. (Note that if the user responded "no" above, this member
+        # is not set and nothing will be saved.)
+        if self._credentials_to_save:
+            self.save_credentials(response)
 
     # Factored out to allow for easy patching in tests
     def _prompt_for_password(self, netloc: str) -> tuple[str | None, str | None, bool]:
@@ -314,9 +372,11 @@ class MultiDomainBasicAuth(AuthBase):
             return False
         return input("Save credentials to keyring [y/N]: ") == "y"
 
-    def handle_401(self, resp: Response, **kwargs: Any) -> Response:
+    def handle_401(self, resp: RequestsResponse, **kwargs: Any) -> Response:
         # We only care about 401 response, anything else we want to just
         #   pass through the actual response
+        from requests.auth import HTTPBasicAuth
+
         if resp.status_code != 401:
             return resp
 
@@ -370,7 +430,7 @@ class MultiDomainBasicAuth(AuthBase):
 
         return new_resp
 
-    def warn_on_401(self, resp: Response, **kwargs: Any) -> None:
+    def warn_on_401(self, resp: Response | RequestsResponse, **kwargs: Any) -> None:
         """Response callback to warn about incorrect credentials."""
         if resp.status_code == 401:
             logger.warning(
@@ -379,7 +439,9 @@ class MultiDomainBasicAuth(AuthBase):
                 resp.request.url,
             )
 
-    def save_credentials(self, resp: Response, **kwargs: Any) -> None:
+    def save_credentials(
+        self, resp: Response | RequestsResponse, **kwargs: Any
+    ) -> None:
         """Response callback to save credentials on success."""
         keyring = get_keyring_provider()
         assert keyring is not None, "should never reach here without keyring"

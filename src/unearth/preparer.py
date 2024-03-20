@@ -14,9 +14,10 @@ import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, cast
 
-from requests import HTTPError, Session
+import httpx
 
 from unearth.errors import HashMismatchError, UnpackError
+from unearth.fetchers import Fetcher
 from unearth.link import Link
 from unearth.utils import (
     BZ2_EXTENSIONS,
@@ -28,6 +29,14 @@ from unearth.utils import (
     iter_with_callback,
 )
 from unearth.vcs import vcs_support
+
+HTTPErrors: tuple[type[Exception], ...] = (httpx.HTTPError,)
+try:
+    from requests import HTTPError
+
+    HTTPErrors += (HTTPError,)
+except ModuleNotFoundError:
+    pass
 
 if TYPE_CHECKING:
     from typing import Protocol
@@ -282,7 +291,7 @@ def _untar_archive(filename: Path, location: Path, reporter: UnpackReporter) -> 
 
 
 def unpack_link(
-    session: Session,
+    session: Fetcher,
     link: Link,
     download_dir: Path,
     location: Path,
@@ -296,7 +305,7 @@ def unpack_link(
     The link can be a VCS link or a file link.
 
     Args:
-        session (Session): the requests session
+        session (Fetcher): the requests session
         link (Link): the link to unpack
         download_dir (Path): the directory to download the file to
         location (Path): the destination directory
@@ -326,10 +335,10 @@ def unpack_link(
         # A remote artfiact link, check the download dir first
         artifact = download_dir / link.filename
         if not _check_downloaded(artifact, hashes):
-            with session.get(link.normalized, stream=True) as resp:
+            with session.get_stream(link.normalized) as resp:
                 try:
                     resp.raise_for_status()
-                except HTTPError as e:
+                except HTTPErrors as e:
                     raise UnpackError(f"Download failed: {e}") from None
                 try:
                     total = int(resp.headers["Content-Length"])
@@ -343,7 +352,7 @@ def unpack_link(
                 with artifact.open("wb") as f:
                     callback = functools.partial(download_reporter, link, total=total)
                     for chunk in iter_with_callback(
-                        resp.iter_content(chunk_size=READ_CHUNK_SIZE),
+                        resp.iter_bytes(chunk_size=READ_CHUNK_SIZE),
                         callback,
                         stepper=len,
                     ):

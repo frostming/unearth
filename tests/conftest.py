@@ -1,16 +1,23 @@
 """Configuration for the pytest test suite."""
 
+from __future__ import annotations
+
 import os
 from ssl import SSLContext
-from unittest import mock
+from typing import TYPE_CHECKING
 
 import flask
 import pytest
 import trustme
+from httpx import WSGITransport
 from wsgiadapter import WSGIAdapter as _WSGIAdapter
 
 from tests.fixtures.app import BASE_DIR, create_app
-from unearth.session import InsecureMixin, PyPISession
+from unearth.fetchers import PyPIClient
+from unearth.fetchers.legacy import InsecureMixin, PyPISession
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 
 class WSGIAdapter(_WSGIAdapter):
@@ -58,16 +65,7 @@ def fixtures_dir():
 
 @pytest.fixture()
 def pypi():
-    wsgi_app = create_app()
-    with mock.patch.object(
-        PyPISession, "insecure_adapter_cls", return_value=InsecureWSGIAdapter(wsgi_app)
-    ):
-        with mock.patch.object(
-            PyPISession,
-            "secure_adapter_cls",
-            return_value=WSGIAdapter(wsgi_app),
-        ):
-            yield wsgi_app
+    return create_app()
 
 
 @pytest.fixture()
@@ -92,13 +90,39 @@ def pypi_auth(pypi):
     return pypi
 
 
+@pytest.fixture(params=["sync", "legacy"])
+def fetcher_type(request) -> Literal["sync", "legacy"]:
+    return request.param
+
+
 @pytest.fixture()
-def session():
-    s = PyPISession()
+def session(fetcher_type):
+    if fetcher_type == "sync":
+        client = PyPIClient()
+    else:
+        client = PyPISession()
     try:
-        yield s
+        yield client
     finally:
-        s.close()
+        client.close()
+
+
+@pytest.fixture()
+def pypi_session(pypi, fetcher_type, mocker):
+    if fetcher_type == "sync":
+        client = PyPIClient(transport=WSGITransport(pypi))
+    else:
+        mocker.patch.object(
+            PyPISession, "insecure_adapter_cls", return_value=InsecureWSGIAdapter(pypi)
+        )
+        mocker.patch.object(
+            PyPISession, "secure_adapter_cls", return_value=WSGIAdapter(pypi)
+        )
+        client = PyPISession()
+    try:
+        yield client
+    finally:
+        client.close()
 
 
 @pytest.fixture(params=["html", "json"])

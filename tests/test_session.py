@@ -1,10 +1,24 @@
 import logging
-from unittest import mock
 
 import pytest
 
 from unearth.auth import MultiDomainBasicAuth
+from unearth.collector import is_secure_origin
+from unearth.fetchers.legacy import PyPISession
+from unearth.fetchers.sync import PyPIClient
 from unearth.link import Link
+
+
+@pytest.fixture
+def private_session(fetcher_type):
+    if fetcher_type == "sync":
+        session = PyPIClient(trusted_hosts=["example.org", "192.168.0.1:8080"])
+    else:
+        session = PyPISession(trusted_hosts=["example.org", "192.168.0.1:8080"])
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 @pytest.mark.parametrize(
@@ -25,73 +39,80 @@ from unearth.link import Link
         ("http://192.168.0.1:8080/simple", True),
     ],
 )
-def test_session_is_secure_origin(session, url, is_secure):
-    for host in ["example.org", "192.168.0.1:8080"]:
-        session.add_trusted_host(host)
-    assert session.is_secure_origin(Link(url)) == is_secure
+def test_session_is_secure_origin(private_session, url, is_secure):
+    assert is_secure_origin(private_session, Link(url)) == is_secure
 
 
 def test_session_with_selfsigned_ca(
-    httpserver, custom_certificate_authority, session, tmp_path
+    httpserver, custom_certificate_authority, fetcher_type, tmp_path
 ):
     ca_cert = tmp_path / "ca.crt"
     custom_certificate_authority.cert_pem.write_to_path(ca_cert)
-    session.set_ca_certificates(ca_cert)
+    if fetcher_type == "sync":
+        session = PyPIClient(verify=str(ca_cert))
+    else:
+        session = PyPISession(ca_certificates=ca_cert)
 
     httpserver.expect_request("/").respond_with_json({})
-    assert session.get(httpserver.url_for("/")).json() == {}
+    with session:
+        assert session.get(httpserver.url_for("/")).json() == {}
 
 
-def test_session_auth_401_if_no_prompting(pypi_auth, session):
-    session.auth = MultiDomainBasicAuth(prompting=False)
-    resp = session.get("https://pypi.org/simple")
+@pytest.mark.usefixtures("pypi_auth")
+def test_session_auth_401_if_no_prompting(pypi_session):
+    pypi_session.auth = MultiDomainBasicAuth(prompting=False)
+    resp = pypi_session.get("https://pypi.org/simple")
     assert resp.status_code == 401
 
 
-def test_session_auth_from_source_urls(pypi_auth, session):
-    session.auth = MultiDomainBasicAuth(
+@pytest.mark.usefixtures("pypi_auth")
+def test_session_auth_from_source_urls(pypi_session):
+    pypi_session.auth = MultiDomainBasicAuth(
         prompting=False, index_urls=["https://test:password@pypi.org/simple"]
     )
-    resp = session.get("https://pypi.org/simple/click")
+    resp = pypi_session.get("https://pypi.org/simple/click")
     assert resp.status_code == 200
     assert not any(r.status_code == 401 for r in resp.history)
 
 
-def test_session_auth_with_empty_password(pypi_auth, session, monkeypatch):
+@pytest.mark.usefixtures("pypi_auth")
+def test_session_auth_with_empty_password(pypi_session, monkeypatch):
     monkeypatch.setenv("PYPI_PASSWORD", "")
-    session.auth = MultiDomainBasicAuth(
+    pypi_session.auth = MultiDomainBasicAuth(
         prompting=False, index_urls=["https://test:@pypi.org/simple"]
     )
-    resp = session.get("https://pypi.org/simple/click")
+    resp = pypi_session.get("https://pypi.org/simple/click")
     assert resp.status_code == 200
     assert not any(r.status_code == 401 for r in resp.history)
 
 
-def test_session_auth_from_prompting(pypi_auth, session):
-    with mock.patch.object(
+@pytest.mark.usefixtures("pypi_auth")
+def test_session_auth_from_prompting(pypi_session, mocker):
+    pypi_session.auth = MultiDomainBasicAuth(prompting=True)
+    mocker.patch.object(
         MultiDomainBasicAuth,
         "_prompt_for_password",
         return_value=("test", "password", False),
-    ):
-        session.auth = MultiDomainBasicAuth(prompting=True)
-        resp = session.get("https://pypi.org/simple/click")
+    )
+    resp = pypi_session.get("https://pypi.org/simple/click")
     assert resp.status_code == 200
     assert any(r.status_code == 401 for r in resp.history)
 
-    resp = session.get("https://pypi.org/simple/click")
+    resp = pypi_session.get("https://pypi.org/simple/click")
     assert resp.status_code == 200
     assert not any(r.status_code == 401 for r in resp.history)
 
 
-def test_session_auth_warn_agains_wrong_credentials(pypi_auth, session, caplog):
+@pytest.mark.usefixtures("pypi_auth")
+def test_session_auth_warn_agains_wrong_credentials(pypi_session, caplog, mocker):
     caplog.set_level(logging.WARNING)
-    with mock.patch.object(
+    mocker.patch.object(
         MultiDomainBasicAuth,
         "_prompt_for_password",
         return_value=("test", "incorrect", False),
-    ):
-        session.auth = MultiDomainBasicAuth(prompting=True)
-        resp = session.get("https://pypi.org/simple/click")
+    )
+    pypi_session.auth = MultiDomainBasicAuth(prompting=True)
+    resp = pypi_session.get("https://pypi.org/simple/click")
     assert resp.status_code == 401
     record = caplog.records[-1]
     assert record.levelname == "WARNING"
