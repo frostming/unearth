@@ -26,6 +26,11 @@ def is_absolute_url(self) -> bool:
 httpx.URL.is_absolute_url = property(is_absolute_url)
 
 
+class FileByteStream(IteratorByteStream):
+    def close(self) -> None:
+        self._stream.close()  # type: ignore[attr-defined]
+
+
 class LocalFSTransport(httpx.BaseTransport):
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         link = Link(str(request.url))
@@ -50,7 +55,7 @@ class LocalFSTransport(httpx.BaseTransport):
             return httpx.Response(
                 status_code=200,
                 headers=headers,
-                stream=IteratorByteStream(path.open("rb")),
+                stream=FileByteStream(path.open("rb")),
             )
 
 
