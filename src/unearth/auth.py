@@ -231,9 +231,12 @@ class MultiDomainBasicAuth(Auth):
             logger.debug("Found index url %s", index_url)
 
             # If an index URL was found, try its embedded credentials
-            if index_auth is not None and index_auth[1] is not None:
-                logger.debug("Found credentials in index url for %s", netloc)
-                return cast(AuthInfo, index_auth)
+            if index_auth is not None:
+                if index_auth[1] is not None:
+                    logger.debug("Found credentials in index url for %s", netloc)
+                    return cast(AuthInfo, index_auth)
+                if username is None:
+                    username = index_auth[0]
 
         # Get creds from netrc if we still don't have them
         if allow_netrc:
@@ -326,12 +329,15 @@ class MultiDomainBasicAuth(Auth):
         # Prompt the user for a new username and password
         save = False
         netloc = response.url.netloc.decode()
-        if not username and not password:
+        if password is None:
             # We are not able to prompt the user so simply return the response
             if not self.prompting:
                 return
 
-            username, password, save = self._prompt_for_password(netloc)
+            if _expect_argument(self._prompt_for_password, "username"):
+                username, password, save = self._prompt_for_password(netloc, username)
+            else:
+                username, password, save = self._prompt_for_password(netloc)
 
         # Store the new username and password to use for future requests
         self._credentials_to_save = None
@@ -356,13 +362,18 @@ class MultiDomainBasicAuth(Auth):
             self.save_credentials(response)
 
     # Factored out to allow for easy patching in tests
-    def _prompt_for_password(self, netloc: str) -> tuple[str | None, str | None, bool]:
-        username = input(f"User for {netloc}: ")
+    def _prompt_for_password(
+        self, netloc: str, username: str | None = None
+    ) -> tuple[str | None, str | None, bool]:
+        if username is None:
+            username = input(f"User for {netloc}: ")
+            auth = get_keyring_auth(netloc, username)
+            if auth and auth[0] is not None and auth[1] is not None:
+                return (*auth, False)
+        else:
+            logger.info("Username: %s", username)
         if not username:
             return None, None, False
-        auth = get_keyring_auth(netloc, username)
-        if auth and auth[0] is not None and auth[1] is not None:
-            return auth[0], auth[1], False
         password = getpass.getpass("Password: ")
         return username, password, True
 
@@ -391,12 +402,17 @@ class MultiDomainBasicAuth(Auth):
 
         # Prompt the user for a new username and password
         save = False
-        if not username and not password:
+        if password is None:
             # We are not able to prompt the user so simply return the response
             if not self.prompting:
                 return resp
 
-            username, password, save = self._prompt_for_password(parsed.netloc)
+            if _expect_argument(self._prompt_for_password, "username"):
+                username, password, save = self._prompt_for_password(
+                    parsed.netloc, username
+                )
+            else:
+                username, password, save = self._prompt_for_password(parsed.netloc)
 
         # Store the new username and password to use for future requests
         self._credentials_to_save = None
