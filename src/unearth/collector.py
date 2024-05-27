@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import functools
 import ipaddress
 import json
 import logging
 import mimetypes
 from datetime import datetime
 from html.parser import HTMLParser
-from typing import Iterable, NamedTuple
+from typing import Iterable, Mapping, NamedTuple
 from urllib import parse
 
 from unearth.fetchers import Fetcher, Response
@@ -149,7 +148,10 @@ def parse_json_response(page: IndexPage) -> Iterable[Link]:
 
 
 def collect_links_from_location(
-    session: Fetcher, location: Link, expand: bool = False
+    session: Fetcher,
+    location: Link,
+    expand: bool = False,
+    headers: Mapping[str, str] | None = None,
 ) -> Iterable[Link]:
     """Collect package links from a remote URL or local path.
 
@@ -165,24 +167,27 @@ def collect_links_from_location(
                 for child in path.iterdir():
                     file_url = path_to_url(str(child))
                     if _is_html_file(file_url):
-                        yield from _collect_links_from_index(session, Link(file_url))
+                        yield from _collect_links_from_index(
+                            session, Link(file_url), headers
+                        )
                     else:
                         yield Link(file_url)
             else:
                 index_html = Link(path_to_url(path.joinpath("index.html").as_posix()))
-                yield from _collect_links_from_index(session, index_html)
+                yield from _collect_links_from_index(session, index_html, headers)
         else:
-            yield from _collect_links_from_index(session, location)
+            yield from _collect_links_from_index(session, location, headers)
 
     else:
         yield from _collect_links_from_index(session, location)
 
 
-@functools.lru_cache(maxsize=None)
-def fetch_page(session: Fetcher, location: Link) -> IndexPage:
+def fetch_page(
+    session: Fetcher, location: Link, headers: Mapping[str, str] | None = None
+) -> IndexPage:
     if location.is_vcs:
         raise LinkCollectError("It is a VCS link.")
-    resp = _get_html_response(session, location)
+    resp = _get_html_response(session, location, headers)
     from_cache = getattr(resp, "from_cache", False)
     cache_text = " (from cache)" if from_cache else ""
     logger.debug("Fetching HTML page %s%s", location.redacted, cache_text)
@@ -191,11 +196,13 @@ def fetch_page(session: Fetcher, location: Link) -> IndexPage:
     )
 
 
-def _collect_links_from_index(session: Fetcher, location: Link) -> Iterable[Link]:
+def _collect_links_from_index(
+    session: Fetcher, location: Link, headers: Mapping[str, str] | None = None
+) -> Iterable[Link]:
     if not is_secure_origin(session, location):
         return []
     try:
-        page = fetch_page(session, location)
+        page = fetch_page(session, location, headers)
     except LinkCollectError as e:
         logger.warning("Failed to collect links from %s: %s", location.redacted, e)
         return []
@@ -211,7 +218,9 @@ def _is_html_file(file_url: str) -> bool:
     return mimetypes.guess_type(file_url, strict=False)[0] == "text/html"
 
 
-def _get_html_response(session: Fetcher, location: Link) -> Response:
+def _get_html_response(
+    session: Fetcher, location: Link, headers: Mapping[str, str] | None = None
+) -> Response:
     if is_archive_file(location.filename):
         # If the URL looks like a file, send a HEAD request to ensure
         # the link is an HTML page to avoid downloading a large file.
@@ -227,9 +236,7 @@ def _get_html_response(session: Fetcher, location: Link) -> Response:
                     "text/html; q=0.01",
                 ]
             ),
-            # Don't cache the /simple/{package} page, to ensure it gets updated
-            # immediately when a new release is uploaded.
-            "Cache-Control": "max-age=0",
+            **(headers or {}),
         },
     )
     _check_for_status(resp)

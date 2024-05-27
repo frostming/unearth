@@ -131,6 +131,7 @@ class PackageFinder:
         self.respect_source_order = respect_source_order
         self.verbosity = verbosity
         self.exclude_newer_than = exclude_newer_than
+        self.headers: dict[str, str] = {}
 
         self._tag_priorities = {
             tag: i for i, tag in enumerate(self.target_python.supported_tags())
@@ -270,12 +271,17 @@ class PackageFinder:
             if source["type"] == "index":
                 link = self._build_index_page_link(source["url"], package_name)
                 result = self._evaluate_links(
-                    collect_links_from_location(self.session, link), evaluator
+                    collect_links_from_location(
+                        self.session, link, headers=self.headers
+                    ),
+                    evaluator,
                 )
             else:
                 link = self._build_find_link(source["url"])
                 result = self._evaluate_links(
-                    collect_links_from_location(self.session, link, expand=True),
+                    collect_links_from_location(
+                        self.session, link, expand=True, headers=self.headers
+                    ),
                     evaluator,
                 )
             if self.respect_source_order:
