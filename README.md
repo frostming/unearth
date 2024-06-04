@@ -9,8 +9,6 @@
 
 A utility to fetch and download python packages
 
-> _NOTICE_ This project is still in its early stage and the API may change before 1.0 release.
-
 ## Why this project?
 
 This project exists as the last piece to complete the puzzle of a package manager. The other pieces are:
