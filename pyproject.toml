@@ -57,7 +57,7 @@ test = [
     "pytest-httpserver>=1.0.4",
     "flask>=2.1.2",
     "requests-wsgi-adapter>=0.4.1",
-    "trustme>=0.9.0",
+    "trustme>=0.9.0; python_version < \"3.13\"",
     "pytest-mock>=3.12.0",
 ]
 doc = [
