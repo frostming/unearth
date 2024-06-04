@@ -288,7 +288,7 @@ def commonprefix(*m: str) -> str:
 def get_netrc_auth(url: str) -> tuple[str, str] | None:
     """Get the auth for the given url from the netrc file."""
     try:
-        from netrc import netrc
+        from netrc import NetrcParseError, netrc
     except ImportError:
         return None
     from httpx import URL
@@ -297,7 +297,7 @@ def get_netrc_auth(url: str) -> tuple[str, str] | None:
 
     try:
         authenticator = netrc(os.getenv("NETRC"))
-    except (FileNotFoundError, TypeError):
+    except (NetrcParseError, OSError):
         return None
     info = authenticator.authenticators(hostname)
 
