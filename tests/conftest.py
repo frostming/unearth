@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import os
+import sys
 from ssl import SSLContext
 from typing import TYPE_CHECKING
 
 import flask
 import pytest
-import trustme
 from httpx import WSGITransport
 from wsgiadapter import WSGIAdapter as _WSGIAdapter
 
@@ -33,12 +33,16 @@ class InsecureWSGIAdapter(InsecureMixin, WSGIAdapter):
 
 @pytest.fixture(scope="session")
 def custom_certificate_authority():
+    if sys.version_info >= (3, 13):
+        pytest.skip("trustme is not compatible with Python 3.13")
+    import trustme
+
     return trustme.CA()
 
 
 @pytest.fixture(scope="session")
 def self_signed_server_cert(httpserver_listen_address, custom_certificate_authority):
-    server, port = httpserver_listen_address
+    server, _ = httpserver_listen_address
     return custom_certificate_authority.issue_cert(server)
 
 
