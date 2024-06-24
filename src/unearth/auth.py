@@ -6,7 +6,7 @@ import logging
 import os
 import shutil
 import subprocess
-from typing import TYPE_CHECKING, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Literal, Optional, Tuple, cast
 from urllib.parse import SplitResult, urlparse, urlsplit
 
 from httpx import URL, Auth, BasicAuth
@@ -83,10 +83,16 @@ class KeyringCliProvider(KeyringBaseProvider):
         self.keyring = cmd
 
     def get_auth_info(self, url: str, username: str | None) -> AuthInfo | None:
+        logger.debug("Getting credentials from keyring CLI for url: %s", url)
+        cred = self._get_secret(url, username or "", mode="creds")
+        if cred is not None:
+            username, password = cred.splitlines()
+            return username, password
+
         if username is None:
             username = "__token__"
         logger.debug("Getting password from keyring CLI for %s@%s", username, url)
-        password = self._get_password(url, username)
+        password = self._get_secret(url, username)  # type: ignore[assignment]
         if password is not None:
             return username, password
         return None
@@ -94,9 +100,14 @@ class KeyringCliProvider(KeyringBaseProvider):
     def save_auth_info(self, url: str, username: str, password: str) -> None:
         return self._set_password(url, username, password)
 
-    def _get_password(self, service_name: str, username: str) -> str | None:
-        """Mirror the implementation of keyring.get_password using cli"""
-        cmd = [self.keyring, "get", service_name, username]
+    def _get_secret(
+        self,
+        service_name: str,
+        username: str,
+        mode: Literal["password", "creds"] = "password",
+    ) -> str | None:
+        """Mirror the implementation of keyring.get_[password|credential] using cli"""
+        cmd = [self.keyring, f"--mode={mode}", "get", service_name, username]
         env = dict(os.environ, PYTHONIOENCODING="utf-8")
         res = subprocess.run(
             cmd, stdin=subprocess.DEVNULL, capture_output=True, env=env
