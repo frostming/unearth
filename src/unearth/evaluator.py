@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 from datetime import datetime
-from typing import Any, Iterable
+from typing import Any
 
 import packaging.requirements
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
@@ -190,15 +190,27 @@ class Evaluator:
                     ),
                 )
 
-    def validate_wheel_tag(self, tags: Iterable[Tag]) -> bool:
-        """Check if the wheel tags are compatible with the target Python.
+    def validate_wheel_tag(self, tags: frozenset[Tag]) -> bool:
+        """(DEPRECATED) Check if the wheel tags are compatible with the target Python.
 
         Args:
             tags (Iterable[Tag]): The wheel tags to check.
         """
         if self.ignore_compatibility:
             return True
-        return not set(tags).isdisjoint(self.target_python.supported_tags())
+        return not tags.isdisjoint(self.target_python.supported_tags())
+
+    def check_wheel_tags(self, filename: str):
+        """Check if the wheel tags are compatible with the target Python.
+
+        Args:
+            filename: The filename of the wheel
+        """
+        if self.ignore_compatibility:
+            return
+        tags = parse_wheel_filename(filename)[-1]
+        if not self.validate_wheel_tag(tags):
+            raise LinkMismatchError(f"The wheel tags in {filename} are not compatible")
 
     def evaluate_link(self, link: Link) -> Package | None:
         """
@@ -219,12 +231,7 @@ class Evaluator:
                     raise LinkMismatchError(
                         f"The package name doesn't match {wheel_info[0]}"
                     )
-                if not self.validate_wheel_tag(wheel_info[3]):
-                    raise LinkMismatchError(
-                        "none of the wheel tags({}) are compatible".format(
-                            ", ".join(sorted(str(tag) for tag in wheel_info[3]))
-                        ),
-                    )
+                self.check_wheel_tags(link.filename)
                 version = str(wheel_info[1])
             else:
                 if link._fragment_dict.get("egg"):
