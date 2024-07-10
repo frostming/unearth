@@ -25,22 +25,15 @@ def test_collector_skip_vcs_link(pypi_session, caplog):
 
 
 def test_collect_links_from_404_page(pypi_session):
-    collected = list(
-        collect_links_from_location(
-            pypi_session, Link("https://test.pypi.org/simple/not-found")
-        )
-    )
-    assert not collected
+    link = Link("https://test.pypi.org/simple/not-found")
+    collected = list(collect_links_from_location(pypi_session, link))
+    assert collected == [link]
 
 
 def test_skip_non_html_archive(pypi_session, caplog):
-    collected = list(
-        collect_links_from_location(
-            pypi_session,
-            Link("https://test.pypi.org/files/click-8.1.3-py3-none-any.whl"),
-        )
-    )
-    assert not collected
+    link = Link("https://test.pypi.org/files/click-8.1.3-py3-none-any.whl")
+    collected = list(collect_links_from_location(pypi_session, link))
+    assert collected == [link]
     assert "Content-Type unsupported" in caplog.records[0].message
 
 
@@ -52,7 +45,7 @@ def test_collect_links_from_index_page(pypi_session):
         ),
         key=lambda link: link.filename,
     )
-    assert len(collected) == 4
+    assert len(collected) == 5
     assert all(link.url.startswith("https://test.pypi.org") for link in collected)
 
 

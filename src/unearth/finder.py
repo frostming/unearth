@@ -7,11 +7,11 @@ import functools
 import itertools
 import os
 import pathlib
+import posixpath
 import warnings
 from datetime import datetime
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Any, Iterable, NamedTuple, Sequence
-from urllib.parse import urljoin
 
 import packaging.requirements
 from packaging.utils import BuildTag, canonicalize_name, parse_wheel_filename
@@ -190,9 +190,8 @@ class PackageFinder:
         )
 
     def _build_index_page_link(self, index_url: str, package_name: str) -> Link:
-        return Link(
-            urljoin(index_url.rstrip("/") + "/", canonicalize_name(package_name) + "/")
-        )
+        url = posixpath.join(index_url, canonicalize_name(package_name)) + "/"
+        return self._build_find_link(url)
 
     def _build_find_link(self, find_link: str) -> Link:
         if os.path.exists(find_link):
