@@ -176,9 +176,14 @@ def collect_links_from_location(
                 index_html = Link(path_to_url(path.joinpath("index.html").as_posix()))
                 yield from _collect_links_from_index(session, index_html, headers)
         else:
-            yield from _collect_links_from_index(session, location, headers)
+            if _is_html_file(str(path)):
+                yield from _collect_links_from_index(session, location, headers)
+            else:
+                yield location
 
-    else:
+    else:  # remote url, can be either a remote file or an index URL containing files
+        if is_secure_origin(session, location) and not location.is_vcs:
+            yield location
         yield from _collect_links_from_index(session, location)
 
 
