@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import functools
 import itertools
+import logging
 import os
 import re
 import sys
@@ -14,6 +15,7 @@ from typing import Callable, Iterable, Iterator, Sequence, TypeVar
 from urllib.request import pathname2url, url2pathname
 
 WINDOWS = sys.platform == "win32"
+logger = logging.getLogger(__name__)
 
 
 def parse_query(query: str) -> dict[str, str]:
@@ -297,7 +299,8 @@ def get_netrc_auth(url: str) -> tuple[str, str] | None:
 
     try:
         authenticator = netrc(os.getenv("NETRC"))
-    except (NetrcParseError, OSError):
+    except (NetrcParseError, OSError) as e:
+        logger.warning("Couldn't parse netrc because of %s: %s", type(e).__name__, e)
         return None
     info = authenticator.authenticators(hostname)
 
