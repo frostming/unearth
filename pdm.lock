@@ -355,7 +355,7 @@ files = [
 
 [[package]]
 name = "furo"
-version = "2024.7.18"
+version = "2024.8.6"
 requires_python = ">=3.8"
 summary = "A clean customisable Sphinx documentation theme."
 groups = ["doc"]
@@ -363,11 +363,11 @@ dependencies = [
     "beautifulsoup4",
     "pygments>=2.7",
     "sphinx-basic-ng>=1.0.0.beta2",
-    "sphinx<8.0,>=6.0",
+    "sphinx<9.0,>=6.0",
 ]
 files = [
-    {file = "furo-2024.7.18-py3-none-any.whl", hash = "sha256:b192c7c1f59805494c8ed606d9375fdac6e6ba8178e747e72bc116745fb7e13f"},
-    {file = "furo-2024.7.18.tar.gz", hash = "sha256:37b08c5fccc95d46d8712c8be97acd46043963895edde05b0f4f135d58325c83"},
+    {file = "furo-2024.8.6-py3-none-any.whl", hash = "sha256:6cd97c58b47813d3619e63e9081169880fbe331f0ca883c871ff1f3f11814f5c"},
+    {file = "furo-2024.8.6.tar.gz", hash = "sha256:b63e4cee8abfc3136d3bc03a3d45a76a850bada4d6374d24c1716b0e01394a01"},
 ]
 
 [[package]]
@@ -559,7 +559,7 @@ files = [
 
 [[package]]
 name = "keyring"
-version = "25.2.1"
+version = "25.3.0"
 requires_python = ">=3.8"
 summary = "Store and access your passwords safely."
 groups = ["keyring"]
@@ -574,8 +574,8 @@ dependencies = [
     "pywin32-ctypes>=0.2.0; sys_platform == \"win32\"",
 ]
 files = [
-    {file = "keyring-25.2.1-py3-none-any.whl", hash = "sha256:2458681cdefc0dbc0b7eb6cf75d0b98e59f9ad9b2d4edd319d18f68bdca95e50"},
-    {file = "keyring-25.2.1.tar.gz", hash = "sha256:daaffd42dbda25ddafb1ad5fec4024e5bbcfe424597ca1ca452b299861e49f1b"},
+    {file = "keyring-25.3.0-py3-none-any.whl", hash = "sha256:8d963da00ccdf06e356acd9bf3b743208878751032d8599c6cc89eb51310ffae"},
+    {file = "keyring-25.3.0.tar.gz", hash = "sha256:8d85a1ea5d6db8515b59e1c5d1d1678b03cf7fc8b8dcfb1651e8c4a524eb42ef"},
 ]
 
 [[package]]
@@ -754,7 +754,7 @@ files = [
 
 [[package]]
 name = "pytest"
-version = "8.3.1"
+version = "8.3.2"
 requires_python = ">=3.8"
 summary = "pytest: simple powerful testing with Python"
 groups = ["test"]
@@ -767,13 +767,13 @@ dependencies = [
     "tomli>=1; python_version < \"3.11\"",
 ]
 files = [
-    {file = "pytest-8.3.1-py3-none-any.whl", hash = "sha256:e9600ccf4f563976e2c99fa02c7624ab938296551f280835ee6516df8bc4ae8c"},
-    {file = "pytest-8.3.1.tar.gz", hash = "sha256:7e8e5c5abd6e93cb1cc151f23e57adc31fcf8cfd2a3ff2da63e23f732de35db6"},
+    {file = "pytest-8.3.2-py3-none-any.whl", hash = "sha256:4ba08f9ae7dcf84ded419494d229b48d0903ea6407b030eaec46df5e6a73bba5"},
+    {file = "pytest-8.3.2.tar.gz", hash = "sha256:c132345d12ce551242c87269de812483f5bcc87cdbb4722e48487ba194f9fdce"},
 ]
 
 [[package]]
 name = "pytest-httpserver"
-version = "1.0.12"
+version = "1.1.0"
 requires_python = ">=3.8"
 summary = "pytest-httpserver is a httpserver for pytest"
 groups = ["test"]
@@ -781,8 +781,8 @@ dependencies = [
     "Werkzeug>=2.0.0",
 ]
 files = [
-    {file = "pytest_httpserver-1.0.12-py3-none-any.whl", hash = "sha256:dae1c79ec7aeda83bfaaf4d0a400867a4b1bc6bf668244daaf13aa814e3022da"},
-    {file = "pytest_httpserver-1.0.12.tar.gz", hash = "sha256:c14600b8efb9ea8d7e63251a242ab987f13028b36d3d397ffaca3c929f67eb16"},
+    {file = "pytest_httpserver-1.1.0-py3-none-any.whl", hash = "sha256:7ef88be8ed3354b6784daa3daa75a422370327c634053cefb124903fa8d73a41"},
+    {file = "pytest_httpserver-1.1.0.tar.gz", hash = "sha256:6b1cb0199e2ed551b1b94d43f096863bbf6ae5bcd7c75c2c06845e5ce2dc8701"},
 ]
 
 [[package]]
