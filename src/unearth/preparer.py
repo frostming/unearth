@@ -318,7 +318,9 @@ def unpack_link(
     location.parent.mkdir(parents=True, exist_ok=True)
     if link.is_vcs:
         backend = vcs_support.get_backend(cast(str, link.vcs), verbosity=verbosity)
+        download_reporter(link, 0, 1)
         backend.fetch(link, location)
+        download_reporter(link, 1, 1)
         return location
 
     validator = HashValidator(link, hashes)
