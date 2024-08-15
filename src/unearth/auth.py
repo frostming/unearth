@@ -50,6 +50,11 @@ class KeyringBaseProvider(metaclass=abc.ABCMeta):
         """Set the password for the given url and username."""
         ...
 
+    @abc.abstractmethod
+    def delete_auth_info(self, url: str, username: str) -> None:
+        """Delete the password for the given url and username."""
+        ...
+
 
 class KeyringModuleProvider(KeyringBaseProvider):
     """Keyring provider that uses the keyring module."""
@@ -77,6 +82,9 @@ class KeyringModuleProvider(KeyringBaseProvider):
     def save_auth_info(self, url: str, username: str, password: str) -> None:
         self.keyring.set_password(url, username, password)
 
+    def delete_auth_info(self, url: str, username: str) -> None:
+        self.keyring.delete_password(url, username)
+
 
 class KeyringCliProvider(KeyringBaseProvider):
     def __init__(self, cmd: str) -> None:
@@ -99,6 +107,11 @@ class KeyringCliProvider(KeyringBaseProvider):
 
     def save_auth_info(self, url: str, username: str, password: str) -> None:
         return self._set_password(url, username, password)
+
+    def delete_auth_info(self, url: str, username: str) -> None:
+        cmd = [self.keyring, "del", url, username]
+        env = dict(os.environ, PYTHONIOENCODING="utf-8")
+        subprocess.run(cmd, env=env, check=True)
 
     def _get_secret(
         self,
@@ -125,7 +138,6 @@ class KeyringCliProvider(KeyringBaseProvider):
         input_ = (password + os.linesep).encode("utf-8")
         env = dict(os.environ, PYTHONIOENCODING="utf-8")
         subprocess.run(cmd, input=input_, env=env, check=True)
-        return None
 
 
 def get_keyring_provider() -> KeyringBaseProvider | None:
