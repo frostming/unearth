@@ -94,7 +94,7 @@ version = "1.16.0"
 requires_python = ">=3.8"
 summary = "Foreign Function Interface for Python calling C code."
 groups = ["keyring", "test"]
-marker = "(python_version < \"3.13\" or sys_platform == \"linux\") and platform_python_implementation != \"PyPy\""
+marker = "python_version < \"3.13\" and platform_python_implementation != \"PyPy\" or sys_platform == \"linux\" and platform_python_implementation != \"PyPy\""
 dependencies = [
     "pycparser",
 ]
@@ -735,7 +735,7 @@ version = "2.22"
 requires_python = ">=3.8"
 summary = "C parser in Python"
 groups = ["keyring", "test"]
-marker = "(python_version < \"3.13\" or sys_platform == \"linux\") and platform_python_implementation != \"PyPy\""
+marker = "python_version < \"3.13\" and platform_python_implementation != \"PyPy\" or sys_platform == \"linux\" and platform_python_implementation != \"PyPy\""
 files = [
     {file = "pycparser-2.22-py3-none-any.whl", hash = "sha256:c3702b6d3dd8c7abc1afa565d7e63d53a1d0bd86cdc24edd75470f4de499cfcc"},
     {file = "pycparser-2.22.tar.gz", hash = "sha256:491c8be9c040f5390f5bf44a5b07752bd07f56edf992381b05c701439eec10f6"},
