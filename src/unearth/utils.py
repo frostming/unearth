@@ -299,6 +299,8 @@ def get_netrc_auth(url: str) -> tuple[str, str] | None:
 
     try:
         authenticator = netrc(os.getenv("NETRC"))
+    except FileNotFoundError:
+        return None
     except (NetrcParseError, OSError) as e:
         logger.warning("Couldn't parse netrc because of %s: %s", type(e).__name__, e)
         return None
