@@ -235,7 +235,7 @@ _V = TypeVar("_V", bound=Type[VersionControl])
 
 class VcsSupport:
     def __init__(self) -> None:
-        self._registry: dict[str, Type[VersionControl]] = {}
+        self._registry: dict[str, type[VersionControl]] = {}
 
     def register(self, vcs: _V) -> _V:
         self._registry[vcs.name] = vcs
