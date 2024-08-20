@@ -90,10 +90,10 @@ extend-select = [
 extend-ignore = ["B018", "B019"]
 exclude = ["tests/fixtures"]
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 10
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["unearth"]
 
 [tool.pytest.ini_options]

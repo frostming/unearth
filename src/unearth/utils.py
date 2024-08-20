@@ -31,7 +31,7 @@ def add_ssh_scheme_to_git_uri(uri: str) -> str:
         parsed = parse.urlparse(uri)
         if ":" in parsed.netloc:
             netloc, _, path_start = parsed.netloc.rpartition(":")
-            path = "/{0}{1}".format(path_start, parsed.path)
+            path = f"/{path_start}{parsed.path}"
             uri = parse.urlunparse(parsed._replace(netloc=netloc, path=path))
     return uri
 
@@ -227,7 +227,7 @@ class LazySequence(Sequence[T]):
 _legacy_specifier_re = re.compile(r"(==|!=|<=|>=|<|>)(\s*)([^,;\s)]*)")
 
 
-@functools.lru_cache()
+@functools.lru_cache
 def fix_legacy_specifier(specifier: str) -> str:
     """Since packaging 22.0, legacy specifiers like '>=4.*' are no longer
     supported. We try to normalize them to the new format.
