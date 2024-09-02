@@ -287,8 +287,12 @@ def commonprefix(*m: str) -> str:
     return s1
 
 
+_netrc_warned = False
+
+
 def get_netrc_auth(url: str) -> tuple[str, str] | None:
     """Get the auth for the given url from the netrc file."""
+    global _netrc_warned
     try:
         from netrc import NetrcParseError, netrc
     except ImportError:
@@ -302,7 +306,11 @@ def get_netrc_auth(url: str) -> tuple[str, str] | None:
     except FileNotFoundError:
         return None
     except (NetrcParseError, OSError) as e:
-        logger.warning("Couldn't parse netrc because of %s: %s", type(e).__name__, e)
+        if not _netrc_warned:
+            logger.warning(
+                "Couldn't parse netrc because of %s: %s", type(e).__name__, e
+            )
+            _netrc_warned = True
         return None
     info = authenticator.authenticators(hostname)
 
