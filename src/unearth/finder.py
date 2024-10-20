@@ -11,7 +11,7 @@ import posixpath
 import warnings
 from datetime import datetime
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Any, Iterable, NamedTuple, Sequence
+from typing import TYPE_CHECKING, Any, Generator, Iterable, NamedTuple, Sequence
 
 import packaging.requirements
 from packaging.utils import BuildTag, canonicalize_name, parse_wheel_filename
@@ -216,7 +216,17 @@ class PackageFinder:
             requirement=requirement,
             allow_prereleases=allow_prereleases,
         )
-        return filter(evaluator, packages)
+        first_iter, second_iter = itertools.tee(packages)
+        check, it = itertools.tee(filter(evaluator, first_iter))
+        if next(check, None) is None and allow_prereleases is None:
+            # Allow prereleases if they are all the index has.
+            evaluator = functools.partial(
+                evaluate_package,
+                requirement=requirement,
+                allow_prereleases=True,
+            )
+            it = filter(evaluator, second_iter)
+        return it
 
     def _evaluate_hashes(
         self, packages: Iterable[Package], hashes: dict[str, list[str]]
@@ -320,7 +330,7 @@ class PackageFinder:
         self,
         requirement: packaging.requirements.Requirement,
         allow_yanked: bool | None = None,
-    ) -> Iterable[Package]:
+    ) -> Generator[Package, None, None]:
         if allow_yanked is None:
             allow_yanked = is_equality_specifier(requirement.specifier)
         if requirement.url:
@@ -386,10 +396,11 @@ class PackageFinder:
         if isinstance(requirement, str):
             requirement = packaging.requirements.Requirement(requirement)
         packages = self._find_packages_from_requirement(requirement, allow_yanked)
-        candidates = LazySequence(packages)
+        first_iter, second_iter = itertools.tee(packages)
+        candidates = LazySequence(first_iter)
         applicable_candidates = LazySequence(
             self._evaluate_hashes(
-                self._evaluate_packages(packages, requirement, allow_prereleases),
+                self._evaluate_packages(second_iter, requirement, allow_prereleases),
                 hashes=hashes or {},
             )
         )
