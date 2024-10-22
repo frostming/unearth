@@ -12,7 +12,7 @@ import urllib.parse as parse
 import warnings
 from pathlib import Path
 from typing import Callable, Iterable, Iterator, Sequence, TypeVar
-from urllib.request import pathname2url, url2pathname
+from urllib.request import url2pathname
 
 WINDOWS = sys.platform == "win32"
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ def parse_netloc(netloc: str) -> tuple[str, int | None]:
     return parsed.hostname or "", parsed.port
 
 
-def url_to_path(url: str) -> str:
+def url_to_path(url: str) -> Path:
     """
     Convert a file: URL to a path.
     """
@@ -96,17 +96,13 @@ def url_to_path(url: str) -> str:
     ):
         path = path[1:]
 
-    return path
+    return Path(path)
 
 
-def path_to_url(path: str) -> str:
-    """
-    Convert a path to a file: URL.  The path will be made absolute and have
-    quoted path parts.
-    """
-    path = os.path.normpath(os.path.abspath(path))
-    url = parse.urljoin("file:", pathname2url(path))
-    return url
+if sys.version_info >= (3, 13):
+
+    def url_to_path(url: str) -> Path:
+        return Path.from_uri(url)
 
 
 WHEEL_EXTENSION = ".whl"
