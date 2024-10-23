@@ -7,7 +7,7 @@ from pathlib import Path
 
 from unearth.errors import UnpackError
 from unearth.link import Link
-from unearth.utils import add_ssh_scheme_to_git_uri, display_path, path_to_url
+from unearth.utils import add_ssh_scheme_to_git_uri, display_path
 from unearth.vcs.base import HiddenText, VersionControl, vcs_support
 
 logger = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ class Git(VersionControl):
         if "://" in url:
             return url
         if os.path.exists(url):
-            return path_to_url(os.path.abspath(url))
+            return Path(os.path.abspath(url)).as_uri()
         else:
             return add_ssh_scheme_to_git_uri(url)
 

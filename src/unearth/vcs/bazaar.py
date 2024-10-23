@@ -5,7 +5,7 @@ from pathlib import Path
 
 from unearth.errors import UnpackError
 from unearth.link import Link
-from unearth.utils import display_path, path_to_url
+from unearth.utils import display_path
 from unearth.vcs.base import HiddenText, VersionControl, vcs_support
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class Bazaar(VersionControl):
                 if line.startswith(x):
                     repo = line.split(x)[1]
                     if self._is_local_repository(repo):
-                        return path_to_url(repo)
+                        return Path(repo).as_uri()
                     return repo
         raise UnpackError(f"Remote not found for {display_path(location)}")
 

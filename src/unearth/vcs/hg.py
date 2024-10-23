@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from unearth.utils import display_path, path_to_url
+from unearth.utils import display_path
 from unearth.vcs.base import HiddenText, VersionControl, vcs_support
 
 logger = logging.getLogger(__name__)
@@ -61,5 +61,5 @@ class Mercurial(VersionControl):
             cwd=location,
         ).stdout.strip()
         if self._is_local_repository(url):
-            url = path_to_url(url)
+            url = Path(url).as_uri()
         return url.strip()

@@ -13,7 +13,6 @@ from urllib.parse import ParseResult, unquote, urlparse
 from unearth.utils import (
     add_ssh_scheme_to_git_uri,
     parse_query,
-    path_to_url,
     split_auth_from_url,
     url_to_path,
 )
@@ -86,7 +85,7 @@ class Link:
     @classmethod
     def from_path(cls, file_path: str | pathlib.Path) -> Link:
         """Create a link from a local file path"""
-        url = path_to_url(str(file_path))
+        url = pathlib.Path(file_path).as_uri()
         return cls(url)
 
     @property
@@ -95,7 +94,7 @@ class Link:
 
     @property
     def file_path(self) -> pathlib.Path:
-        return pathlib.Path(url_to_path(self.url_without_fragment))
+        return url_to_path(self.url_without_fragment)
 
     @property
     def is_vcs(self) -> bool:

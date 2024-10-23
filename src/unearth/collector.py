@@ -13,7 +13,7 @@ from urllib import parse
 
 from unearth.fetchers import Fetcher, Response
 from unearth.link import Link
-from unearth.utils import is_archive_file, path_to_url
+from unearth.utils import is_archive_file
 
 SUPPORTED_CONTENT_TYPES = (
     "text/html",
@@ -165,7 +165,7 @@ def collect_links_from_location(
         if path.is_dir():
             if expand:
                 for child in path.iterdir():
-                    file_url = path_to_url(str(child))
+                    file_url = child.as_uri()
                     if _is_html_file(file_url):
                         yield from _collect_links_from_index(
                             session, Link(file_url), headers
@@ -173,7 +173,7 @@ def collect_links_from_location(
                     else:
                         yield Link(file_url)
             else:
-                index_html = Link(path_to_url(path.joinpath("index.html").as_posix()))
+                index_html = Link(path.joinpath("index.html").as_uri())
                 yield from _collect_links_from_index(session, index_html, headers)
         else:
             if _is_html_file(str(path)):
