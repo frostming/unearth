@@ -13,15 +13,15 @@ from unearth.link import Link
 from unearth.vcs import vcs_support
 
 __all__ = [
-    "Link",
-    "Source",
-    "Package",
-    "URLError",
     "BestMatch",
-    "UnpackError",
-    "vcs_support",
-    "TargetPython",
-    "PackageFinder",
-    "VCSBackendError",
     "HashMismatchError",
+    "Link",
+    "Package",
+    "PackageFinder",
+    "Source",
+    "TargetPython",
+    "URLError",
+    "UnpackError",
+    "VCSBackendError",
+    "vcs_support",
 ]
