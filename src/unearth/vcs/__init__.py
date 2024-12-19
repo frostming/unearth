@@ -4,4 +4,4 @@ from unearth.vcs.git import Git
 from unearth.vcs.hg import Mercurial
 from unearth.vcs.svn import Subversion
 
-__all__ = ["vcs_support", "Git", "Mercurial", "Bazaar", "Subversion"]
+__all__ = ["Bazaar", "Git", "Mercurial", "Subversion", "vcs_support"]
