@@ -33,7 +33,7 @@ class Bazaar(VersionControl):
         elif self.verbosity == 1:
             flag = ""
         else:
-            flag = f"-{'v'*self.verbosity}"
+            flag = f"-{'v' * self.verbosity}"
         cmd_args: list[str | HiddenText] = [
             "branch",
             flag,
