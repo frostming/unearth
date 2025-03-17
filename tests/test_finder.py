@@ -134,8 +134,9 @@ def test_find_package_with_version_specifier(pypi_session):
     matches = finder.find_matches("black==22.3.0")
     assert len(matches) == 6
     assert all(p.name == "black" and p.version == "22.3.0" for p in matches)
-    matches = finder.find_matches("black<22.3.0")
-    assert len(matches) == 0
+    match = finder.find_best_match("black<22.3.0")
+    assert match.best.version == "21.12b0"
+    assert len(match.applicable) == 2
 
 
 def test_find_package_allowing_prereleases(pypi_session):
