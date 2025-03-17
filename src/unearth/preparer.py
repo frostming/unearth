@@ -236,7 +236,7 @@ def _untar_archive(filename: Path, location: Path, reporter: UnpackReporter) -> 
             filename,
         )
         mode = "r:*"
-    with tarfile.open(filename, mode, encoding="utf-8") as tar:
+    with tarfile.open(filename, mode, encoding="utf-8") as tar:  # type: ignore[call-overload]
         leading = has_leading_dir([member.name for member in tar.getmembers()])
         callback = functools.partial(reporter, filename, total=len(tar.getmembers()))
         for member in iter_with_callback(tar.getmembers(), callback):
