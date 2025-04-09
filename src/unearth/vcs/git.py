@@ -55,8 +55,7 @@ class Git(VersionControl):
             self.run_command(["clone", *flags, url, str(location)], extra_env=env)
 
         if rev is not None:
-            self.run_command(["fetch", "-q", url, rev], cwd=location)
-            self.run_command(["checkout", "FETCH_HEAD"], cwd=location)
+            self.run_command(["checkout", rev], cwd=location)
         revision = self.get_revision(location)
         logger.info("Resolved %s to commit %s", url, revision)
         self._update_submodules(location)
@@ -73,9 +72,8 @@ class Git(VersionControl):
     ) -> None:
         self.run_command(["fetch", "-q", "--tags"], cwd=location)
         if rev is not None:
-            url = self.get_remote_url(location)
-            self.run_command(["fetch", "-q", url, rev], cwd=location)
-            resolved = self._resolve_revision(location, "FETCH_HEAD")
+            self.run_command(["checkout", rev], cwd=location)
+            resolved = self._resolve_revision(location, "HEAD")
         else:
             try:
                 # try as if the rev is a branch name or HEAD
