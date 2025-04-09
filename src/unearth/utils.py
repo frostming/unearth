@@ -60,52 +60,43 @@ def parse_netloc(netloc: str) -> tuple[str, int | None]:
     return parsed.hostname or "", parsed.port
 
 
-if sys.version_info < (3, 13):
+def url_to_path(url: str) -> Path:
+    """
+    Convert a file: URL to a path.
+    """
+    assert url.startswith("file:"), (
+        f"You can only turn file: urls into filenames (not {url!r})"
+    )
 
-    def url_to_path(url: str) -> Path:
-        """
-        Convert a file: URL to a path.
-        """
-        assert url.startswith("file:"), (
-            f"You can only turn file: urls into filenames (not {url!r})"
+    _, netloc, path, _, _ = parse.urlsplit(url)
+
+    if not netloc or netloc == "localhost":
+        # According to RFC 8089, same as empty authority.
+        netloc = ""
+    elif WINDOWS:
+        # If we have a UNC path, prepend UNC share notation.
+        netloc = "\\\\" + netloc
+    else:
+        raise ValueError(
+            f"non-local file URIs are not supported on this platform: {url!r}"
         )
 
-        _, netloc, path, _, _ = parse.urlsplit(url)
+    path = url2pathname(netloc + path)
 
-        if not netloc or netloc == "localhost":
-            # According to RFC 8089, same as empty authority.
-            netloc = ""
-        elif WINDOWS:
-            # If we have a UNC path, prepend UNC share notation.
-            netloc = "\\\\" + netloc
-        else:
-            raise ValueError(
-                f"non-local file URIs are not supported on this platform: {url!r}"
-            )
+    # On Windows, urlsplit parses the path as something like "/C:/Users/foo".
+    # This creates issues for path-related functions like io.open(), so we try
+    # to detect and strip the leading slash.
+    if (
+        WINDOWS
+        and not netloc  # Not UNC.
+        and len(path) >= 3
+        and path[0] == "/"  # Leading slash to strip.
+        and path[1].isalpha()  # Drive letter.
+        and path[2:4] in (":", ":/")  # Colon + end of string, or colon + absolute path.
+    ):
+        path = path[1:]
 
-        path = url2pathname(netloc + path)
-
-        # On Windows, urlsplit parses the path as something like "/C:/Users/foo".
-        # This creates issues for path-related functions like io.open(), so we try
-        # to detect and strip the leading slash.
-        if (
-            WINDOWS
-            and not netloc  # Not UNC.
-            and len(path) >= 3
-            and path[0] == "/"  # Leading slash to strip.
-            and path[1].isalpha()  # Drive letter.
-            and path[2:4]
-            in (":", ":/")  # Colon + end of string, or colon + absolute path.
-        ):
-            path = path[1:]
-
-        return Path(path)
-
-
-else:
-
-    def url_to_path(url: str) -> Path:
-        return Path.from_uri(url)
+    return Path(path)
 
 
 WHEEL_EXTENSION = ".whl"
