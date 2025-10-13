@@ -67,7 +67,7 @@ def _custom_manylinux_platforms(arch: str) -> list[str]:
 
 
 def _get_custom_platforms(arch: str) -> list[str]:
-    arch_prefix, arch_sep, arch_suffix = arch.partition("_")
+    arch_prefix, *_ = arch.partition("_")
     if arch.startswith("macosx"):
         arches = _mac_platforms(arch)
     elif arch_prefix in ["manylinux2014", "manylinux2010"]:
