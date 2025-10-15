@@ -68,6 +68,7 @@ class Git(VersionControl):
         else:
             revision = self.get_revision(location)
         logger.info("Resolved %s to commit %s", url, revision)
+        self.run_command(["reset", "--hard", "-q", revision], cwd=location)
         self._update_submodules(location)
 
     def _update_submodules(self, location: Path) -> None:
