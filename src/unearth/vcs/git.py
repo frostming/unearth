@@ -167,14 +167,24 @@ class Git(VersionControl):
 
     def _resolve_revision(self, location: Path, rev: str | None) -> str:
         if rev is None:
-            rev = "HEAD"
-        result = self.run_command(
-            ["rev-parse", rev],
-            cwd=location,
-            stdout_only=True,
-            log_output=False,
-        )
-        return result.stdout.strip()
+            rev_alternatives = ["HEAD"]
+        else:
+            rev_alternatives = [rev, f"origin/{rev}"]
+        last_error = RuntimeError()
+        for check_rev in rev_alternatives:
+            try:
+                result = self.run_command(
+                    ["rev-parse", "--quiet", "--verify", f"{check_rev}^{{commit}}"],
+                    cwd=location,
+                    stdout_only=True,
+                    log_output=False,
+                )
+            except UnpackError as e:
+                last_error = e
+                continue
+            return result.stdout.strip()
+        logger.error("Unable to resolve: %s", rev)
+        raise last_error
 
     def get_revision(self, location: Path) -> str:
         return self._resolve_revision(location, None)
