@@ -559,14 +559,13 @@ files = [
 
 [[package]]
 name = "keyring"
-version = "25.6.0"
+version = "25.7.0"
 requires_python = ">=3.9"
 summary = "Store and access your passwords safely."
 groups = ["keyring"]
 dependencies = [
     "SecretStorage>=3.2; sys_platform == \"linux\"",
     "importlib-metadata>=4.11.4; python_version < \"3.12\"",
-    "importlib-resources; python_version < \"3.9\"",
     "jaraco-classes",
     "jaraco-context",
     "jaraco-functools",
@@ -574,8 +573,8 @@ dependencies = [
     "pywin32-ctypes>=0.2.0; sys_platform == \"win32\"",
 ]
 files = [
-    {file = "keyring-25.6.0-py3-none-any.whl", hash = "sha256:552a3f7af126ece7ed5c89753650eec89c7eaae8617d0aa4d9ad2b75111266bd"},
-    {file = "keyring-25.6.0.tar.gz", hash = "sha256:0b39998aa941431eb3d9b0d4b2460bc773b9df6fed7621c2dfb291a7e0187a66"},
+    {file = "keyring-25.7.0-py3-none-any.whl", hash = "sha256:be4a0b195f149690c166e850609a477c532ddbfbaed96a404d4e43f8d5e2689f"},
+    {file = "keyring-25.7.0.tar.gz", hash = "sha256:fe01bd85eb3f8fb3dd0405defdeac9a5b4f6f0439edbb3149577f244a2e8245b"},
 ]
 
 [[package]]
