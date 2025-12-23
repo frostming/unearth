@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import email
+import email.utils
 import mimetypes
 import os
 from typing import TYPE_CHECKING
@@ -13,9 +13,12 @@ from unearth.link import Link
 from unearth.utils import parse_netloc
 
 if TYPE_CHECKING:
+    import ssl
     from typing import Any, ContextManager, Iterable, Mapping
 
-    from httpx._types import CertTypes, TimeoutTypes, VerifyTypes
+    from httpx._types import CertTypes, TimeoutTypes
+
+    VerifyTypes = ssl.SSLContext | bool | str
 
 
 def is_absolute_url(self) -> bool:
