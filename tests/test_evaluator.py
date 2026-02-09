@@ -251,9 +251,9 @@ def test_evaluate_compatibility_tags(link, expected, ignore_compatibility):
         ("8.1.3", ">=8.0", None, True),
         ("7.1", ">=8.0", None, False),
         ("8.0.0a0", ">=8.0.0dev0", None, True),
-        ("8.0.0dev0", ">=7", None, False),
+        ("8.0.0dev0", ">=7", False, False),
         ("8.0.0dev0", ">=7", True, True),
-        ("8.0.0a0", "", None, False),
+        ("8.0.0a0", "", False, False),
         ("8.0.0a0", ">=8.0.0dev0", False, False),
     ],
 )
