@@ -79,7 +79,7 @@ def zip_item_is_executable(info: zipfile.ZipInfo) -> bool:
 
 def is_within_directory(directory: str | Path, path: str | Path) -> bool:
     try:
-        Path(path).relative_to(directory)
+        Path(os.path.realpath(path)).relative_to(os.path.realpath(directory))
     except ValueError:
         return False
     return True
@@ -253,11 +253,22 @@ def _untar_archive(filename: Path, location: Path, reporter: UnpackReporter) -> 
             if member.isdir():
                 os.makedirs(path, exist_ok=True)
             elif member.issym():
+                if os.path.isabs(member.linkname):
+                    link_target = member.linkname
+                else:
+                    link_target = os.path.join(os.path.dirname(path), member.linkname)
+                if not is_within_directory(location, link_target):
+                    logger.warning(
+                        "In the tar file %s the member %s -> %s points outside %s, skipping",
+                        filename,
+                        member.name,
+                        member.linkname,
+                        location,
+                    )
+                    continue
                 try:
                     tar._extract_member(member, path)
                 except Exception as exc:
-                    # Some corrupt tar files seem to produce this
-                    # (specifically bad symlinks)
                     logger.warning(
                         "In the tar file %s the member %s is invalid: %s",
                         filename,
