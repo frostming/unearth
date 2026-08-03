@@ -5,8 +5,9 @@ import logging
 import os
 import shutil
 import subprocess
+from collections.abc import Collection, Sequence
 from pathlib import Path
-from typing import Collection, Sequence, Type, TypeVar, cast
+from typing import Type, TypeVar, cast
 
 from unearth.errors import UnpackError, URLError, VCSBackendError
 from unearth.link import Link
@@ -172,7 +173,6 @@ class VersionControl(abc.ABC):
             rev (str|None): the revision to checkout
             args (list[str | HiddenText]): the arguments to pass to the update command
         """
-        pass
 
     @abc.abstractmethod
     def update(
@@ -185,7 +185,6 @@ class VersionControl(abc.ABC):
             rev (str|None): the revision to checkout
             args (list[str | HiddenText]): the arguments to pass to the update command
         """
-        pass
 
     @abc.abstractmethod
     def get_remote_url(self, location: Path) -> str:
@@ -195,7 +194,6 @@ class VersionControl(abc.ABC):
     @abc.abstractmethod
     def get_revision(self, location: Path) -> str:
         """Get the commit hash of the repository."""
-        pass
 
     def is_immutable_revision(self, location: Path, link: Link) -> bool:
         """Check if the revision is immutable.

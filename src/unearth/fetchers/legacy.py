@@ -7,8 +7,9 @@ import logging
 import mimetypes
 import os
 import warnings
+from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any, Iterable, Iterator, cast
+from typing import Any, cast
 
 import urllib3
 

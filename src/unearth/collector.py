@@ -6,9 +6,10 @@ import ipaddress
 import json
 import logging
 import mimetypes
+from collections.abc import Iterable, Mapping
 from datetime import datetime
 from html.parser import HTMLParser
-from typing import Iterable, Mapping, NamedTuple
+from typing import NamedTuple
 from urllib import parse
 
 from unearth.fetchers import Fetcher, Response

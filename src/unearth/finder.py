@@ -9,9 +9,10 @@ import os
 import pathlib
 import posixpath
 import warnings
+from collections.abc import Generator, Iterable, Sequence
 from datetime import datetime
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Any, Generator, Iterable, NamedTuple, Sequence
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import packaging.requirements
 from packaging.utils import BuildTag, canonicalize_name, parse_wheel_filename

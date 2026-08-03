@@ -14,7 +14,8 @@ from httpx import URL, Auth, BasicAuth
 from unearth.utils import commonprefix, get_netrc_auth, split_auth_from_url
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Generator, Iterable
+    from collections.abc import Generator, Iterable
+    from typing import Any, Callable
 
     from httpx import Request, Response
     from requests import Response as RequestsResponse
@@ -132,7 +133,7 @@ class KeyringCliProvider(KeyringBaseProvider):
     def _set_password(self, service_name: str, username: str, password: str) -> None:
         """Mirror the implementation of keyring.set_password using cli"""
         if self.keyring is None:
-            return None
+            return
 
         cmd = [self.keyring, "set", service_name, username]
         input_ = (password + os.linesep).encode("utf-8")

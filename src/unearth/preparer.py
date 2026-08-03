@@ -11,8 +11,9 @@ import shutil
 import stat
 import tarfile
 import zipfile
+from collections.abc import Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, cast
+from typing import TYPE_CHECKING, cast
 
 import httpx
 

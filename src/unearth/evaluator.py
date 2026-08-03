@@ -184,10 +184,8 @@ class Evaluator:
                 ) from e
             if not requires_python.contains(py_version, True):
                 raise LinkMismatchError(
-                    "The target python version({}) doesn't match "
-                    "the requires-python specifier {}".format(
-                        py_version, link.requires_python
-                    ),
+                    f"The target python version({py_version}) doesn't match "
+                    f"the requires-python specifier {link.requires_python}",
                 )
 
     def validate_wheel_tag(self, tags: frozenset[Tag]) -> bool:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import ContextManager, Iterable, Iterator, Mapping, Protocol
+from collections.abc import Iterable, Iterator, Mapping
+from typing import ContextManager, Protocol
 
 from unearth.fetchers.sync import PyPIClient as PyPIClient
 

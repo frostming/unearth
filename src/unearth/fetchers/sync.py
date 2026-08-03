@@ -14,7 +14,8 @@ from unearth.utils import parse_netloc
 
 if TYPE_CHECKING:
     import ssl
-    from typing import Any, ContextManager, Iterable, Mapping
+    from collections.abc import Iterable, Mapping
+    from typing import Any, ContextManager
 
     from httpx._types import CertTypes, TimeoutTypes
 
