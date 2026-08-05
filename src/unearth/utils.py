@@ -8,10 +8,11 @@ import logging
 import os
 import re
 import sys
-import urllib.parse as parse
 import warnings
+from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path
-from typing import Callable, Iterable, Iterator, Sequence, TypeVar
+from typing import Callable, TypeVar
+from urllib import parse
 from urllib.request import url2pathname
 
 WINDOWS = sys.platform == "win32"

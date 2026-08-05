@@ -94,11 +94,8 @@ class Git(VersionControl):
             # Git fetch would fail with abbreviated commits.
             return False
 
-        if self.has_commit(dest, rev):
-            # Don't fetch if we have the commit locally.
-            return False
-
-        return True
+        # Don't fetch if we have the commit locally.
+        return not self.has_commit(dest, rev)
 
     def has_commit(self, location: Path, rev: str) -> bool:
         """

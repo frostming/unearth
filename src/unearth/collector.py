@@ -6,9 +6,10 @@ import ipaddress
 import json
 import logging
 import mimetypes
+from collections.abc import Iterable, Mapping
 from datetime import datetime
 from html.parser import HTMLParser
-from typing import Iterable, Mapping, NamedTuple
+from typing import NamedTuple
 from urllib import parse
 
 from unearth.fetchers import Fetcher, Response
@@ -234,12 +235,10 @@ def _get_html_response(
     resp = session.get(
         location.normalized,
         headers={
-            "Accept": ", ".join(
-                [
-                    "application/vnd.pypi.simple.v1+json",
-                    "application/vnd.pypi.simple.v1+html; q=0.1",
-                    "text/html; q=0.01",
-                ]
+            "Accept": (
+                "application/vnd.pypi.simple.v1+json, "
+                "application/vnd.pypi.simple.v1+html; q=0.1, "
+                "text/html; q=0.01"
             ),
             **(headers or {}),
         },

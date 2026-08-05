@@ -6,7 +6,7 @@ import logging
 import os
 import shutil
 import subprocess
-from typing import TYPE_CHECKING, Literal, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Literal, Optional, cast
 from urllib.parse import SplitResult, urlparse, urlsplit
 
 from httpx import URL, Auth, BasicAuth
@@ -14,7 +14,8 @@ from httpx import URL, Auth, BasicAuth
 from unearth.utils import commonprefix, get_netrc_auth, split_auth_from_url
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Generator, Iterable
+    from collections.abc import Generator, Iterable
+    from typing import Any, Callable
 
     from httpx import Request, Response
     from requests import Response as RequestsResponse
@@ -22,8 +23,8 @@ if TYPE_CHECKING:
 
 KEYRING_DISABLED = False
 
-AuthInfo = Tuple[str, str]
-MaybeAuth = Optional[Tuple[str, Optional[str]]]
+AuthInfo = tuple[str, str]
+MaybeAuth = Optional[tuple[str, Optional[str]]]
 logger = logging.getLogger(__name__)
 
 
@@ -123,7 +124,11 @@ class KeyringCliProvider(KeyringBaseProvider):
         cmd = [self.keyring, f"--mode={mode}", "get", service_name, username]
         env = dict(os.environ, PYTHONIOENCODING="utf-8")
         res = subprocess.run(
-            cmd, stdin=subprocess.DEVNULL, capture_output=True, env=env
+            cmd,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            env=env,
+            check=False,
         )
         if res.returncode:
             return None
@@ -132,7 +137,7 @@ class KeyringCliProvider(KeyringBaseProvider):
     def _set_password(self, service_name: str, username: str, password: str) -> None:
         """Mirror the implementation of keyring.set_password using cli"""
         if self.keyring is None:
-            return None
+            return
 
         cmd = [self.keyring, "set", service_name, username]
         input_ = (password + os.linesep).encode("utf-8")
@@ -149,7 +154,7 @@ def get_keyring_provider() -> KeyringBaseProvider | None:
         return KeyringModuleProvider()
     except ImportError:
         pass
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.warning(
             "Importing keyring failed: %s, trying to find a keyring executable.",
             exc,
@@ -172,7 +177,7 @@ def get_keyring_auth(url: str | None, username: str | None) -> AuthInfo | None:
         return None
     try:
         return keyring.get_auth_info(url, username)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.warning(
             "Keyring is skipped due to an exception: %s",
             str(exc),

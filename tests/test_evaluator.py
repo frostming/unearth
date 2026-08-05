@@ -145,13 +145,17 @@ def test_evaluate_against_missing_version(link):
     "url,match",
     [
         (
-            "https://test.pypi.org/files/click-8.1.3-py3-none-any.whl"
-            "#sha256=1234567890abcdef",
+            (
+                "https://test.pypi.org/files/click-8.1.3-py3-none-any.whl"
+                "#sha256=1234567890abcdef"
+            ),
             True,
         ),
         (
-            "https://test.pypi.org/files/click-8.1.3-py3-none-any.whl"
-            "#sha256=fedcba0987654321",
+            (
+                "https://test.pypi.org/files/click-8.1.3-py3-none-any.whl"
+                "#sha256=fedcba0987654321"
+            ),
             True,
         ),
         (

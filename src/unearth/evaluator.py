@@ -184,10 +184,8 @@ class Evaluator:
                 ) from e
             if not requires_python.contains(py_version, True):
                 raise LinkMismatchError(
-                    "The target python version({}) doesn't match "
-                    "the requires-python specifier {}".format(
-                        py_version, link.requires_python
-                    ),
+                    f"The target python version({py_version}) doesn't match "
+                    f"the requires-python specifier {link.requires_python}",
                 )
 
     def validate_wheel_tag(self, tags: frozenset[Tag]) -> bool:
@@ -296,12 +294,13 @@ def evaluate_package(
     Returns:
         bool: True if the package matches the requirement, False otherwise
     """
-    if requirement.name:
-        if canonicalize_name(package.name) != canonicalize_name(requirement.name):
-            logger.debug(
-                "Skipping package %s: name doesn't match %s", package, requirement.name
-            )
-            return False
+    if requirement.name and canonicalize_name(package.name) != canonicalize_name(
+        requirement.name
+    ):
+        logger.debug(
+            "Skipping package %s: name doesn't match %s", package, requirement.name
+        )
+        return False
 
     if package.version and not requirement.specifier.contains(
         package.version, prereleases=allow_prereleases
@@ -338,9 +337,7 @@ def validate_hashes(
         for hash_name, allowed_hashes in hashes.items():
             if hash_name in link_hashes:
                 given_hash = link_hashes[hash_name][0]
-                if given_hash not in allowed_hashes:
-                    return False
-                return True
+                return given_hash in allowed_hashes
 
     hash_name, allowed_hashes = next(iter(hashes.items()))
     given_hash = _get_hash(link, hash_name, session)
