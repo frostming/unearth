@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, Mapping
-from typing import ContextManager, Protocol
+from contextlib import AbstractContextManager
+from typing import Protocol
 
 from unearth.fetchers.sync import PyPIClient as PyPIClient
 
@@ -46,7 +47,7 @@ class Fetcher(Protocol):
 
     def get_stream(
         self, url: str, *, headers: Mapping[str, str] | None = None
-    ) -> ContextManager[Response]: ...
+    ) -> AbstractContextManager[Response]: ...
 
     def __hash__(self) -> int: ...
 

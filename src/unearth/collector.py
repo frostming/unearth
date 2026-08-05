@@ -235,12 +235,10 @@ def _get_html_response(
     resp = session.get(
         location.normalized,
         headers={
-            "Accept": ", ".join(
-                [
-                    "application/vnd.pypi.simple.v1+json",
-                    "application/vnd.pypi.simple.v1+html; q=0.1",
-                    "text/html; q=0.01",
-                ]
+            "Accept": (
+                "application/vnd.pypi.simple.v1+json, "
+                "application/vnd.pypi.simple.v1+html; q=0.1, "
+                "text/html; q=0.01"
             ),
             **(headers or {}),
         },

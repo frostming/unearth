@@ -15,7 +15,8 @@ from unearth.utils import parse_netloc
 if TYPE_CHECKING:
     import ssl
     from collections.abc import Iterable, Mapping
-    from typing import Any, ContextManager
+    from contextlib import AbstractContextManager
+    from typing import Any
 
     from httpx._types import CertTypes, TimeoutTypes
 
@@ -118,7 +119,7 @@ class PyPIClient(httpx.Client):
 
     def get_stream(
         self, url: str, *, headers: Mapping[str, str] | None = None
-    ) -> ContextManager[httpx.Response]:
+    ) -> AbstractContextManager[httpx.Response]:
         return self.stream("GET", url, headers=headers)
 
     def iter_secure_origins(self) -> Iterable[tuple[str, str, str]]:

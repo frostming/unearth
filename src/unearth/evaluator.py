@@ -294,12 +294,13 @@ def evaluate_package(
     Returns:
         bool: True if the package matches the requirement, False otherwise
     """
-    if requirement.name:
-        if canonicalize_name(package.name) != canonicalize_name(requirement.name):
-            logger.debug(
-                "Skipping package %s: name doesn't match %s", package, requirement.name
-            )
-            return False
+    if requirement.name and canonicalize_name(package.name) != canonicalize_name(
+        requirement.name
+    ):
+        logger.debug(
+            "Skipping package %s: name doesn't match %s", package, requirement.name
+        )
+        return False
 
     if package.version and not requirement.specifier.contains(
         package.version, prereleases=allow_prereleases
@@ -336,9 +337,7 @@ def validate_hashes(
         for hash_name, allowed_hashes in hashes.items():
             if hash_name in link_hashes:
                 given_hash = link_hashes[hash_name][0]
-                if given_hash not in allowed_hashes:
-                    return False
-                return True
+                return given_hash in allowed_hashes
 
     hash_name, allowed_hashes = next(iter(hashes.items()))
     given_hash = _get_hash(link, hash_name, session)

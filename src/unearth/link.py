@@ -79,7 +79,7 @@ class Link:
     def __hash__(self) -> int:
         return hash(self.__ident())
 
-    def __eq__(self, __o: object) -> bool:
+    def __eq__(self, __o: object, /) -> bool:
         return isinstance(__o, Link) and self.__ident() == __o.__ident()
 
     @classmethod

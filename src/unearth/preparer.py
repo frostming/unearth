@@ -188,8 +188,7 @@ def unpack_archive(
 
 def _unzip_archive(filename: Path, location: Path, reporter: UnpackReporter) -> None:
     os.makedirs(location, exist_ok=True)
-    zipfp = open(filename, "rb")
-    with zipfile.ZipFile(zipfp, allowZip64=True) as zip:
+    with zipfile.ZipFile(filename, allowZip64=True) as zip:
         leading = has_leading_dir(zip.namelist())
         callback = functools.partial(reporter, filename, total=len(zip.infolist()))
         for info in iter_with_callback(zip.infolist(), callback):
@@ -205,7 +204,7 @@ def _unzip_archive(filename: Path, location: Path, reporter: UnpackReporter) -> 
                     f"outside target directory ({location})"
                 )
                 raise UnpackError(message)
-            if fn.endswith("/") or fn.endswith("\\"):
+            if fn.endswith(("/", "\\")):
                 # A directory
                 os.makedirs(fn, exist_ok=True)
             else:
@@ -223,7 +222,7 @@ def _untar_archive(filename: Path, location: Path, reporter: UnpackReporter) -> 
     """Untar the file (with path `filename`) to the destination `location`."""
     os.makedirs(location, exist_ok=True)
     lower_fn = str(filename).lower()
-    if lower_fn.endswith(".gz") or lower_fn.endswith(".tgz"):
+    if lower_fn.endswith((".gz", ".tgz")):
         mode = "r:gz"
     elif lower_fn.endswith(BZ2_EXTENSIONS):
         mode = "r:bz2"
@@ -269,7 +268,9 @@ def _untar_archive(filename: Path, location: Path, reporter: UnpackReporter) -> 
                     continue
                 try:
                     tar._extract_member(member, path)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
+                    # Some corrupt tar files seem to produce this
+                    # (specifically bad symlinks)
                     logger.warning(
                         "In the tar file %s the member %s is invalid: %s",
                         filename,

@@ -70,7 +70,7 @@ class LocalFSAdapter(adapters.BaseAdapter):
                 }
             )
 
-            resp.raw = open(path, "rb")
+            resp.raw = open(path, "rb")  # noqa: SIM115
             resp.close = resp.raw.close  # type: ignore[method-assign]
 
         return resp

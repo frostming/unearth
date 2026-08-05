@@ -7,7 +7,7 @@ import shutil
 import subprocess
 from collections.abc import Collection, Sequence
 from pathlib import Path
-from typing import Type, TypeVar, cast
+from typing import TypeVar, cast
 
 from unearth.errors import UnpackError, URLError, VCSBackendError
 from unearth.link import Link
@@ -228,7 +228,7 @@ class VersionControl(abc.ABC):
         return []
 
 
-_V = TypeVar("_V", bound=Type[VersionControl])
+_V = TypeVar("_V", bound=type[VersionControl])
 
 
 class VcsSupport:
