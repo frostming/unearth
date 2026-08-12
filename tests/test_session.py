@@ -1,11 +1,15 @@
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
 from unearth.auth import MultiDomainBasicAuth
 from unearth.collector import is_secure_origin
+from unearth.fetchers.async_ import SharedAsyncPyPIClient
 from unearth.fetchers.legacy import PyPISession
 from unearth.fetchers.sync import PyPIClient
+from unearth.finder import PackageFinder
 from unearth.link import Link
 
 
@@ -117,3 +121,54 @@ def test_session_auth_warn_agains_wrong_credentials(pypi_session, caplog, mocker
     record = caplog.records[-1]
     assert record.levelname == "WARNING"
     assert "401 Error, Credentials not correct" in record.message
+
+
+def test_fetcher_runs_requests_on_single_loop_thread(httpserver):
+    thread_ids: set[int] = set()
+    lock = threading.Lock()
+
+    async def capture_request(request):
+        del request
+        with lock:
+            thread_ids.add(threading.get_ident())
+
+    httpserver.expect_request("/data").respond_with_json({"ok": True})
+
+    fetcher = SharedAsyncPyPIClient(event_hooks={"request": [capture_request]})
+    try:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(
+                pool.map(
+                    lambda _: fetcher.get(httpserver.url_for("/data")).json(), range(24)
+                )
+            )
+    finally:
+        fetcher.close()
+
+    assert all(result == {"ok": True} for result in results)
+    assert len(thread_ids) == 1
+    assert next(iter(thread_ids)) != threading.get_ident()
+
+
+def test_fetcher_shared_with_package_finder_threads(httpserver):
+    httpserver.expect_request("/simple/demo/").respond_with_data(
+        '<a href="/files/demo-1.0.0.tar.gz">demo-1.0.0.tar.gz</a>',
+        content_type="text/html",
+    )
+    fetcher = SharedAsyncPyPIClient()
+    finder = PackageFinder(
+        session=fetcher,
+        index_urls=[httpserver.url_for("/simple/")],
+        ignore_compatibility=True,
+    )
+    try:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            matches = list(
+                pool.map(
+                    lambda _: finder.find_all_packages("demo")[0].version, range(24)
+                )
+            )
+    finally:
+        fetcher.close()
+
+    assert matches == ["1.0.0"] * 24
