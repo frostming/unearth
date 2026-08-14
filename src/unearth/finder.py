@@ -32,7 +32,12 @@ from unearth.evaluator import (
 from unearth.fetchers import Fetcher
 from unearth.fetchers.sync import PyPIClient
 from unearth.link import Link
-from unearth.preparer import noop_download_reporter, noop_unpack_reporter, unpack_link
+from unearth.preparer import (
+    download_link,
+    noop_download_reporter,
+    noop_unpack_reporter,
+    unpack_link,
+)
 from unearth.utils import LazySequence
 
 if TYPE_CHECKING:
@@ -461,3 +466,31 @@ class PackageFinder:
                 unpack_reporter=unpack_reporter,
             )
         return file.joinpath(link.subdirectory) if link.subdirectory else file
+
+    def download(
+        self,
+        link: Link,
+        location: str | pathlib.Path,
+        hashes: dict[str, list[str]] | None = None,
+        download_reporter: DownloadReporter = noop_download_reporter,
+    ) -> pathlib.Path:
+        """Download the package at the given link without unpacking it.
+
+        Args:
+            link: The link to download.
+            location: The directory to download the artifact to.
+            hashes: The optional hash dict for validation.
+            download_reporter: The download reporter for progress reporting.
+
+        Returns:
+            The path to the downloaded artifact.
+        """
+        if hashes is None:
+            hashes = link.hash_option
+        return download_link(
+            self.session,
+            link,
+            pathlib.Path(location),
+            hashes,
+            download_reporter,
+        )

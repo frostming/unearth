@@ -7,15 +7,12 @@ import json
 import logging
 import os
 import sys
-import tempfile
 from dataclasses import dataclass
 
 from packaging.requirements import Requirement
 
 from unearth.evaluator import TargetPython
 from unearth.finder import PackageFinder
-from unearth.link import Link
-from unearth.utils import splitext
 
 
 @dataclass(frozen=True)
@@ -147,14 +144,6 @@ def cli_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def get_dest_for_package(dest: str, link: Link) -> str:
-    if link.is_wheel:
-        return dest
-    filename = link.filename.rsplit("@", 1)[0]
-    fn, _ = splitext(filename)
-    return os.path.join(dest, fn)
-
-
 def cli(argv: list[str] | None = None) -> None:
     parser = cli_parser()
     args = CLIArgs(**vars(parser.parse_args(argv)))
@@ -181,17 +170,14 @@ def cli(argv: list[str] | None = None) -> None:
     result = []
     if args.download:
         os.makedirs(args.download, exist_ok=True)
-    with tempfile.TemporaryDirectory("unearth-download-") as download_dir:
-        for match in matches:
-            data = match.as_json()
-            if args.download is not None:
-                dest = get_dest_for_package(args.download, match.link)
-                data["local_path"] = finder.download_and_unpack(
-                    match.link,
-                    dest,
-                    download_dir,
-                ).as_posix()
-            result.append(data)
+    for match in matches:
+        data = match.as_json()
+        if args.download is not None:
+            data["local_path"] = finder.download(
+                match.link,
+                args.download,
+            ).as_posix()
+        result.append(data)
     if args.link_only:
         for item in result:
             print(item["link"]["url"])

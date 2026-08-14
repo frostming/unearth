@@ -355,6 +355,40 @@ def unpack_link(
         download_reporter(link, 1, 1)
         return location
 
+    artifact = download_link(
+        session,
+        link,
+        download_dir,
+        hashes,
+        download_reporter=download_reporter,
+    )
+    if artifact.is_dir():
+        return artifact
+    if link.is_wheel:
+        if link.is_file:
+            # Use the local file directly
+            return artifact
+        target_file = location / link.filename
+        if target_file != artifact:
+            # For wheels downloaded from remote locations, move it to the destination.
+            os.replace(artifact, target_file)
+        return target_file
+
+    unpack_archive(artifact, location, reporter=unpack_reporter)
+    return location
+
+
+def download_link(
+    session: Fetcher,
+    link: Link,
+    download_dir: Path,
+    hashes: dict[str, list[str]] | None = None,
+    download_reporter: DownloadReporter = noop_download_reporter,
+) -> Path:
+    """Download an artifact link without unpacking it."""
+    if link.is_vcs:
+        raise UnpackError("VCS links cannot be downloaded without unpacking")
+
     validator = HashValidator(link, hashes)
     if link.is_file:
         if link.file_path.is_dir():
@@ -366,7 +400,8 @@ def unpack_link(
         artifact = link.file_path
         validator.validate_path(artifact)
     else:
-        # A remote artfiact link, check the download dir first
+        # A remote artifact link, check the download dir first.
+        download_dir.mkdir(parents=True, exist_ok=True)
         artifact = download_dir / link.filename
         if not _check_downloaded(artifact, hashes):
             with session.get_stream(link.normalized) as resp:
@@ -394,15 +429,4 @@ def unpack_link(
                             validator.update(chunk)
                             f.write(chunk)
             validator.validate()
-    if link.is_wheel:
-        if link.is_file:
-            # Use the local file directly
-            return artifact
-        target_file = location / link.filename
-        if target_file != artifact:
-            # For wheels downloaded from remote locations, move it to the destination.
-            os.replace(artifact, target_file)
-        return target_file
-
-    unpack_archive(artifact, location, reporter=unpack_reporter)
-    return location
+    return artifact
