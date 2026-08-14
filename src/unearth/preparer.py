@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import errno
 import functools
 import hashlib
 import logging
@@ -63,12 +62,6 @@ def noop_unpack_reporter(filename: Path, completed: int, total: int | None) -> N
 READ_CHUNK_SIZE = 8192
 logger = logging.getLogger(__name__)
 
-# On Windows, os.open does not support the dir_fd parameter, so we cannot
-# use the atomic O_NOFOLLOW + dirfd approach.  Fall back to safe_makedirs
-# (create-then-verify) which still has a TOCTOU window but is the best we
-# can do on that platform.
-_SUPPORTS_DIR_FD = os.open in os.supports_dir_fd
-
 
 def set_extracted_file_to_default_mode_plus_executable(path: str) -> None:
     """
@@ -103,14 +96,6 @@ def safe_makedirs(dest_dir: str | Path, location: str | Path) -> None:
     re-checking *after* ``os.makedirs`` has materialised the directory (and
     any intermediate symlinks have landed on disk), we catch traversals that
     the pre-creation check misses.
-
-    .. note::
-
-        This function retains a TOCTOU window: an attacker can swap a path
-        component between ``makedirs`` and the containment check.  It is
-        retained as a fallback for platforms (Windows) that do not support
-        ``O_NOFOLLOW`` / ``dir_fd``.  On POSIX systems, prefer
-        :func:`makedirs_nofollow` and :func:`open_file_nofollow`.
     """
     os.makedirs(dest_dir, exist_ok=True)
     if not is_within_directory(location, dest_dir):
@@ -118,88 +103,6 @@ def safe_makedirs(dest_dir: str | Path, location: str | Path) -> None:
             f"Path traversal detected: {dest_dir!r} resolves outside "
             f"target directory ({location!r})"
         )
-
-
-# ---------------------------------------------------------------------------
-# Atomic no-follow helpers (POSIX only)
-# ---------------------------------------------------------------------------
-
-
-def _open_dir_nofollow(parent_fd: int, name: str) -> int:
-    """Open or create a single directory component without following symlinks.
-
-    Returns an open file descriptor for the directory.
-    Raises UnpackError if the component is a symlink.
-    """
-    flags = os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0)
-    # Try to open existing directory first
-    try:
-        fd = os.open(name, flags, dir_fd=parent_fd)
-        # Verify it's really a directory, not a symlink that slipped through
-        if stat.S_ISLNK(os.lstat(name, dir_fd=parent_fd).st_mode):
-            os.close(fd)
-            raise UnpackError(f"Symlink in extraction path component: {name!r}")
-        return fd
-    except FileNotFoundError:
-        pass
-    # Create it
-    try:
-        os.mkdir(name, dir_fd=parent_fd)
-    except FileExistsError:
-        pass  # race: another process created it, that's fine
-    fd = os.open(name, flags, dir_fd=parent_fd)
-    # Double-check: must not be a symlink
-    if stat.S_ISLNK(os.lstat(name, dir_fd=parent_fd).st_mode):
-        os.close(fd)
-        raise UnpackError(f"Symlink in extraction path component: {name!r}")
-    return fd
-
-
-def makedirs_nofollow(base_fd: int, rel_path: str) -> int:
-    """Create directories for *rel_path* under *base_fd* without following symlinks.
-
-    Returns an open fd for the deepest directory created.
-    Caller is responsible for closing the returned fd.
-    """
-    parts = [p for p in rel_path.replace("\\", "/").split("/") if p and p != "."]
-    current_fd = base_fd
-    owned_fds = []
-    try:
-        for part in parts:
-            next_fd = _open_dir_nofollow(current_fd, part)
-            if current_fd != base_fd:
-                owned_fds.append(current_fd)
-            current_fd = next_fd
-        # Transfer ownership: close intermediate fds, return deepest
-        for fd in owned_fds:
-            os.close(fd)
-        return current_fd
-    except Exception:
-        if current_fd != base_fd:
-            try:
-                os.close(current_fd)
-            except OSError:
-                pass
-        for fd in owned_fds:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
-        raise
-
-
-def open_file_nofollow(dir_fd: int, filename: str) -> int:
-    """Open a file for writing without following symlinks.
-
-    Raises UnpackError if *filename* is a symlink.
-    """
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
-    try:
-        return os.open(filename, flags, 0o666, dir_fd=dir_fd)
-    except OSError as e:
-        if e.errno in (errno.ELOOP, errno.ENOTDIR):
-            raise UnpackError(f"Symlink detected at file path: {filename!r}") from e
-        raise
 
 
 def split_leading_dir(path: str) -> list[str]:
@@ -304,66 +207,6 @@ def unpack_archive(
 
 def _unzip_archive(filename: Path, location: Path, reporter: UnpackReporter) -> None:
     os.makedirs(location, exist_ok=True)
-    if _SUPPORTS_DIR_FD:
-        _unzip_archive_nofollow(filename, location, reporter)
-    else:
-        _unzip_archive_safe(filename, location, reporter)
-
-
-def _unzip_archive_nofollow(
-    filename: Path, location: Path, reporter: UnpackReporter
-) -> None:
-    """Unzip using O_NOFOLLOW + dirfd to eliminate TOCTOU race (POSIX)."""
-    base_fd = os.open(str(location), os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        with zipfile.ZipFile(filename, allowZip64=True) as zip:
-            leading = has_leading_dir(zip.namelist())
-            callback = functools.partial(reporter, filename, total=len(zip.infolist()))
-            for info in iter_with_callback(zip.infolist(), callback):
-                name = info.filename
-                fn = name
-                if leading:
-                    fn = split_leading_dir(name)[1]
-                # Normalise: strip leading slashes/dots, reject absolute paths
-                fn = fn.lstrip("/").lstrip("\\")
-                if not fn or fn.startswith(".."):
-                    continue
-                rel_dir = os.path.dirname(fn)
-                rel_file = os.path.basename(fn)
-                if fn.endswith(("/", "\\")):
-                    # Directory entry
-                    dir_fd = makedirs_nofollow(base_fd, fn.rstrip("/\\"))
-                    os.close(dir_fd)
-                else:
-                    dir_fd = makedirs_nofollow(base_fd, rel_dir) if rel_dir else base_fd
-                    try:
-                        file_fd = open_file_nofollow(dir_fd, rel_file)
-                        try:
-                            with (
-                                zip.open(name) as fp,
-                                os.fdopen(file_fd, "wb") as destfp,
-                            ):
-                                shutil.copyfileobj(fp, destfp)
-                            file_fd = -1  # fdopen took ownership
-                        except Exception:
-                            if file_fd >= 0:
-                                os.close(file_fd)
-                            raise
-                        if zip_item_is_executable(info):
-                            set_extracted_file_to_default_mode_plus_executable(
-                                os.path.join(str(location), fn)
-                            )
-                    finally:
-                        if dir_fd != base_fd:
-                            os.close(dir_fd)
-    finally:
-        os.close(base_fd)
-
-
-def _unzip_archive_safe(
-    filename: Path, location: Path, reporter: UnpackReporter
-) -> None:
-    """Unzip using safe_makedirs fallback (Windows — TOCTOU window remains)."""
     with zipfile.ZipFile(filename, allowZip64=True) as zip:
         leading = has_leading_dir(zip.namelist())
         callback = functools.partial(reporter, filename, total=len(zip.infolist()))
@@ -397,106 +240,6 @@ def _unzip_archive_safe(
 def _untar_archive(filename: Path, location: Path, reporter: UnpackReporter) -> None:
     """Untar the file (with path `filename`) to the destination `location`."""
     os.makedirs(location, exist_ok=True)
-    if _SUPPORTS_DIR_FD:
-        _untar_archive_nofollow(filename, location, reporter)
-    else:
-        _untar_archive_safe(filename, location, reporter)
-
-
-def _untar_archive_nofollow(
-    filename: Path, location: Path, reporter: UnpackReporter
-) -> None:
-    """Untar using O_NOFOLLOW + dirfd to eliminate TOCTOU race (POSIX)."""
-    lower_fn = str(filename).lower()
-    if lower_fn.endswith((".gz", ".tgz")):
-        mode = "r:gz"
-    elif lower_fn.endswith(BZ2_EXTENSIONS):
-        mode = "r:bz2"
-    elif lower_fn.endswith(XZ_EXTENSIONS):
-        mode = "r:xz"
-    elif lower_fn.endswith(".tar"):
-        mode = "r"
-    else:
-        logger.warning(
-            "Cannot determine compression type for file %s",
-            filename,
-        )
-        mode = "r:*"
-    base_fd = os.open(str(location), os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        with tarfile.open(filename, mode, encoding="utf-8") as tar:  # type: ignore[call-overload]
-            leading = has_leading_dir([member.name for member in tar.getmembers()])
-            callback = functools.partial(
-                reporter, filename, total=len(tar.getmembers())
-            )
-            for member in iter_with_callback(tar.getmembers(), callback):
-                fn = member.name
-                if leading:
-                    fn = split_leading_dir(fn)[1]
-                # Normalise: strip leading slashes/dots, reject absolute paths
-                fn = fn.lstrip("/").lstrip("\\")
-                if not fn or fn.startswith(".."):
-                    continue
-                rel_dir = os.path.dirname(fn)
-                rel_file = os.path.basename(fn)
-
-                if member.isdir():
-                    dir_fd = makedirs_nofollow(base_fd, fn.rstrip("/\\"))
-                    os.close(dir_fd)
-                elif member.issym():
-                    # Skip symlinks entirely — they are the primary traversal
-                    # vector and O_NOFOLLOW would reject them anyway.
-                    logger.warning(
-                        "In the tar file %s the member %s is a symlink, skipping",
-                        filename,
-                        member.name,
-                    )
-                    continue
-                else:
-                    dir_fd = makedirs_nofollow(base_fd, rel_dir) if rel_dir else base_fd
-                    try:
-                        try:
-                            fp = tar.extractfile(member)
-                        except (KeyError, AttributeError) as exc:
-                            # Some corrupt tar files seem to produce this
-                            # (specifically bad symlinks)
-                            logger.warning(
-                                "In the tar file %s the member %s is invalid: %s",
-                                filename,
-                                member.name,
-                                exc,
-                            )
-                            continue
-                        assert fp is not None
-                        file_fd = open_file_nofollow(dir_fd, rel_file)
-                        try:
-                            with os.fdopen(file_fd, "wb") as destfp:
-                                shutil.copyfileobj(fp, destfp)
-                            file_fd = -1  # fdopen took ownership
-                        except Exception:
-                            if file_fd >= 0:
-                                os.close(file_fd)
-                            raise
-                        fp.close()
-                        # Update the timestamp (useful for cython compiled files)
-                        tar.utime(member, os.path.join(str(location), fn))
-                        # member have any execute permissions for
-                        # user/group/world?
-                        if member.mode & 0o111:
-                            set_extracted_file_to_default_mode_plus_executable(
-                                os.path.join(str(location), fn)
-                            )
-                    finally:
-                        if dir_fd != base_fd:
-                            os.close(dir_fd)
-    finally:
-        os.close(base_fd)
-
-
-def _untar_archive_safe(
-    filename: Path, location: Path, reporter: UnpackReporter
-) -> None:
-    """Untar using safe_makedirs fallback (Windows — TOCTOU window remains)."""
     lower_fn = str(filename).lower()
     if lower_fn.endswith((".gz", ".tgz")):
         mode = "r:gz"
