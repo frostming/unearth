@@ -234,6 +234,34 @@ def test_download_package_file(pypi_session, tmp_path):
     assert filename == downloaded
 
 
+def test_download_package_file_without_unpacking(pypi_session, fixtures_dir, tmp_path):
+    finder = PackageFinder(
+        session=pypi_session,
+        index_urls=[DEFAULT_INDEX_URL],
+        ignore_compatibility=True,
+    )
+    found = finder.find_best_match("first").best.link
+    download_reports = []
+
+    def download_reporter(link, completed, total):
+        download_reports.append((link, completed, total))
+
+    downloaded = finder.download(
+        found,
+        tmp_path / "download",
+        download_reporter=download_reporter,
+    )
+
+    assert downloaded == tmp_path / "download" / found.filename
+    assert (
+        downloaded.read_bytes()
+        == (fixtures_dir / "files" / found.filename).read_bytes()
+    )
+    assert list(downloaded.parent.iterdir()) == [downloaded]
+    _, completed, total = download_reports[-1]
+    assert completed == total == downloaded.stat().st_size
+
+
 def test_exclude_newer_than(pypi_session, content_type):
     finder = PackageFinder(
         session=pypi_session,
