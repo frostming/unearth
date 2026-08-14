@@ -198,9 +198,7 @@ def open_file_nofollow(dir_fd: int, filename: str) -> int:
         return os.open(filename, flags, 0o666, dir_fd=dir_fd)
     except OSError as e:
         if e.errno in (errno.ELOOP, errno.ENOTDIR):
-            raise UnpackError(
-                f"Symlink detected at file path: {filename!r}"
-            ) from e
+            raise UnpackError(f"Symlink detected at file path: {filename!r}") from e
         raise
 
 
@@ -337,15 +335,14 @@ def _unzip_archive_nofollow(
                     dir_fd = makedirs_nofollow(base_fd, fn.rstrip("/\\"))
                     os.close(dir_fd)
                 else:
-                    dir_fd = (
-                        makedirs_nofollow(base_fd, rel_dir) if rel_dir else base_fd
-                    )
+                    dir_fd = makedirs_nofollow(base_fd, rel_dir) if rel_dir else base_fd
                     try:
                         file_fd = open_file_nofollow(dir_fd, rel_file)
                         try:
-                            with zip.open(name) as fp, os.fdopen(
-                                file_fd, "wb"
-                            ) as destfp:
+                            with (
+                                zip.open(name) as fp,
+                                os.fdopen(file_fd, "wb") as destfp,
+                            ):
                                 shutil.copyfileobj(fp, destfp)
                             file_fd = -1  # fdopen took ownership
                         except Exception:
@@ -428,9 +425,7 @@ def _untar_archive_nofollow(
     base_fd = os.open(str(location), os.O_RDONLY | os.O_DIRECTORY)
     try:
         with tarfile.open(filename, mode, encoding="utf-8") as tar:  # type: ignore[call-overload]
-            leading = has_leading_dir(
-                [member.name for member in tar.getmembers()]
-            )
+            leading = has_leading_dir([member.name for member in tar.getmembers()])
             callback = functools.partial(
                 reporter, filename, total=len(tar.getmembers())
             )
@@ -458,9 +453,7 @@ def _untar_archive_nofollow(
                     )
                     continue
                 else:
-                    dir_fd = (
-                        makedirs_nofollow(base_fd, rel_dir) if rel_dir else base_fd
-                    )
+                    dir_fd = makedirs_nofollow(base_fd, rel_dir) if rel_dir else base_fd
                     try:
                         try:
                             fp = tar.extractfile(member)
