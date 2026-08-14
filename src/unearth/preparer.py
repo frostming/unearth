@@ -86,6 +86,25 @@ def is_within_directory(directory: str | Path, path: str | Path) -> bool:
     return True
 
 
+def safe_makedirs(dest_dir: str | Path, location: str | Path) -> None:
+    """Create directory, then verify the resolved path is still within location.
+
+    The post-creation check is necessary because ``is_within_directory`` uses
+    ``os.path.realpath``, which cannot resolve symlinks along a path that does
+    not yet exist.  A malicious archive can first extract a symlink pointing
+    outside ``location`` and then reference a path through that symlink.  By
+    re-checking *after* ``os.makedirs`` has materialised the directory (and
+    any intermediate symlinks have landed on disk), we catch traversals that
+    the pre-creation check misses.
+    """
+    os.makedirs(dest_dir, exist_ok=True)
+    if not is_within_directory(location, dest_dir):
+        raise UnpackError(
+            f"Path traversal detected: {dest_dir!r} resolves outside "
+            f"target directory ({location!r})"
+        )
+
+
 def split_leading_dir(path: str) -> list[str]:
     path = path.lstrip("/").lstrip("\\")
     if "/" in path and (
@@ -206,9 +225,9 @@ def _unzip_archive(filename: Path, location: Path, reporter: UnpackReporter) -> 
                 raise UnpackError(message)
             if fn.endswith(("/", "\\")):
                 # A directory
-                os.makedirs(fn, exist_ok=True)
+                safe_makedirs(fn, location)
             else:
-                os.makedirs(dir, exist_ok=True)
+                safe_makedirs(dir, location)
                 # Don't use read() to avoid allocating an arbitrarily large
                 # chunk of memory for the file's content
                 with zip.open(name) as fp, open(fn, "wb") as destfp:
@@ -251,7 +270,7 @@ def _untar_archive(filename: Path, location: Path, reporter: UnpackReporter) -> 
                 )
                 raise UnpackError(message)
             if member.isdir():
-                os.makedirs(path, exist_ok=True)
+                safe_makedirs(path, location)
             elif member.issym():
                 if os.path.isabs(member.linkname):
                     link_target = member.linkname
@@ -291,7 +310,7 @@ def _untar_archive(filename: Path, location: Path, reporter: UnpackReporter) -> 
                         exc,
                     )
                     continue
-                os.makedirs(os.path.dirname(path), exist_ok=True)
+                safe_makedirs(os.path.dirname(path), location)
                 assert fp is not None
                 with open(path, "wb") as destfp:
                     shutil.copyfileobj(fp, destfp)
