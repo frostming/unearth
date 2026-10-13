@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import functools
 import hashlib
 import logging
@@ -13,6 +14,7 @@ import tarfile
 import zipfile
 from collections.abc import Iterable
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, cast
 
 import httpx
@@ -371,7 +373,16 @@ def unpack_link(
         target_file = location / link.filename
         if target_file != artifact:
             # For wheels downloaded from remote locations, move it to the destination.
-            os.replace(artifact, target_file)
+            try:
+                os.replace(artifact, target_file)
+            except OSError as error:
+                if error.errno != errno.EXDEV:
+                    raise
+                with TemporaryDirectory(dir=location) as temp_dir:
+                    temp_file = Path(temp_dir) / artifact.name
+                    shutil.copy2(artifact, temp_file)
+                    os.replace(temp_file, target_file)
+                artifact.unlink()
         return target_file
 
     unpack_archive(artifact, location, reporter=unpack_reporter)
