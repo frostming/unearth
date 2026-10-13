@@ -183,7 +183,7 @@ def _read_requirements(
         location = f"{filename}:{number}"
         if line.startswith("-") or line.endswith("\\"):
             parser.error(
-                f"{location}: pip options and line continuations are not supported."
+                f"{location}: This command does not support pip options or line continuations."
             )
         try:
             requirement = Requirement(line)
