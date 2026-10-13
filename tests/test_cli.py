@@ -67,6 +67,16 @@ def test_requirements_order_and_all(
     ] == ["click==8.1.3", "Jinja2==3.1.2"]
 
 
+@pytest.mark.parametrize("prefix", ["", "# Packages\n"])
+def test_requirements_utf8_bom(prefix, requirements_file, finder_factory, capsys):
+    requirements_file.write_bytes(b"\xef\xbb\xbf" + f"{prefix}click==8.1.3\n".encode())
+    cli(["-r", str(requirements_file)])
+    finder_factory.return_value.find_matches.assert_called_once_with(
+        Requirement("click==8.1.3")
+    )
+    assert [item["name"] for item in json.loads(capsys.readouterr().out)] == ["click"]
+
+
 @pytest.mark.parametrize("option", ["no-binary", "only-binary", "prefer-binary"])
 def test_requirements_binary_options(option, requirements_file, finder_factory, capsys):
     cli(["-r", str(requirements_file), f"--{option}"])

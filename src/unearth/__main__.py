@@ -172,7 +172,7 @@ def _read_requirements(
     filename: str, parser: argparse.ArgumentParser
 ) -> list[tuple[Requirement, str]]:
     try:
-        lines = Path(filename).read_text(encoding="utf-8").splitlines()
+        lines = Path(filename).read_text(encoding="utf-8-sig").splitlines()
     except (OSError, UnicodeError) as error:
         parser.error(f"Cannot read requirements file {filename}: {error}")
     requirements = []
