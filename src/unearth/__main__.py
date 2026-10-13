@@ -8,8 +8,9 @@ import logging
 import os
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
-from packaging.requirements import Requirement
+from packaging.requirements import InvalidRequirement, Requirement
 
 from unearth.evaluator import TargetPython
 from unearth.finder import PackageFinder
@@ -17,7 +18,8 @@ from unearth.finder import PackageFinder
 
 @dataclass(frozen=True)
 class CLIArgs:
-    requirement: Requirement
+    requirement: Requirement | None
+    requirements: str | None
     verbose: bool
     index_urls: list[str]
     find_links: list[str]
@@ -56,10 +58,18 @@ def cli_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Find and download packages from a PEP 508 requirement string.",
     )
-    parser.add_argument(
+    inputs = parser.add_mutually_exclusive_group(required=True)
+    inputs.add_argument(
         "requirement",
+        nargs="?",
         type=Requirement,
         help="A PEP 508 requirement string, e.g. 'requests>=2.18.4'.",
+    )
+    inputs.add_argument(
+        "--requirements",
+        "-r",
+        metavar="FILE",
+        help="Read PEP 508 requirements from a UTF-8 file, one per line.",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging."
@@ -144,28 +154,77 @@ def cli_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _strip_comment(line: str) -> str:
+    line = line.strip()
+    if line.startswith("#"):
+        return ""
+    for index, char in enumerate(line):
+        if char == "#" and line[index - 1].isspace():
+            try:
+                Requirement(line[:index])
+            except InvalidRequirement:
+                continue
+            return line[:index].rstrip()
+    return line
+
+
+def _read_requirements(
+    filename: str, parser: argparse.ArgumentParser
+) -> list[tuple[Requirement, str]]:
+    try:
+        lines = Path(filename).read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeError) as error:
+        parser.error(f"Cannot read requirements file {filename}: {error}")
+    requirements = []
+    for number, line in enumerate(lines, 1):
+        line = _strip_comment(line)
+        if not line:
+            continue
+        location = f"{filename}:{number}"
+        if line.startswith("-") or line.endswith("\\"):
+            parser.error(
+                f"{location}: This command does not support pip options or line continuations."
+            )
+        try:
+            requirement = Requirement(line)
+        except InvalidRequirement as error:
+            parser.error(f"{location}: {error}")
+        requirements.append((requirement, location))
+    return requirements
+
+
 def cli(argv: list[str] | None = None) -> None:
     parser = cli_parser()
     args = CLIArgs(**vars(parser.parse_args(argv)))
     _setup_logger(args.verbose)
-    name = args.requirement.name
+    requirements: list[tuple[Requirement, str | None]]
+    if args.requirements is not None:
+        requirements = list(_read_requirements(args.requirements, parser))
+    else:
+        assert args.requirement is not None
+        requirements = [(args.requirement, None)]
+    names = [requirement.name for requirement, _ in requirements]
     target_python = TargetPython(args.py_ver, args.abis, args.impl, args.platforms)
     finder = PackageFinder(
         index_urls=args.index_urls or [],
         find_links=args.find_links or [],
         trusted_hosts=args.trusted_hosts or [],
         target_python=target_python,
-        no_binary=[name] if args.no_binary else [],
-        only_binary=[name] if args.only_binary else [],
-        prefer_binary=[name] if args.prefer_binary else [],
+        no_binary=names if args.no_binary else [],
+        only_binary=names if args.only_binary else [],
+        prefer_binary=names if args.prefer_binary else [],
         verbosity=int(args.verbose),
     )
-    matches = list(finder.find_matches(args.requirement))
-    if not matches:
-        print("No matches are found.", file=sys.stderr)
-        sys.exit(1)
-    if not args.all:
-        matches = matches[:1]
+    matches = []
+    for requirement, location in requirements:
+        found = list(finder.find_matches(requirement))
+        if not found:
+            message = "No matches are found."
+            if location is not None:
+                message = f"{location}: {message} ({requirement})"
+            print(message, file=sys.stderr)
+            sys.exit(1)
+        matches.extend(found if args.all else found[:1])
 
     result = []
     if args.download:
@@ -184,7 +243,8 @@ def cli(argv: list[str] | None = None) -> None:
             if "local_path" in item:
                 print("  ==>", item["local_path"])
     else:
-        print(json.dumps(result[0] if len(result) == 1 else result, indent=2))
+        output = result[0] if args.requirements is None and len(result) == 1 else result
+        print(json.dumps(output, indent=2))
 
 
 if __name__ == "__main__":
