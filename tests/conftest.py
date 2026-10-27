@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import flask
 import pytest
-from httpx import WSGITransport
+from httpx2 import WSGITransport
 from wsgiadapter import WSGIAdapter as _WSGIAdapter
 
 from tests.fixtures.app import BASE_DIR, create_app

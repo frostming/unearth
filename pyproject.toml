@@ -16,7 +16,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "packaging>=20",
-    "httpx>=0.27.0,<1",
+    "httpx2>=2.0,<3",
 ]
 dynamic = ["version"]
 

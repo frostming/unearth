@@ -62,7 +62,7 @@ def _check_legacy_session(session: Any) -> None:
     if isinstance(session, Session):
         warnings.warn(
             "The legacy requests.Session is used, which is deprecated and will be removed in the next release. "
-            "Please use `httpx.Client` instead. ",
+            "Please use `httpx2.Client` instead. ",
             DeprecationWarning,
             stacklevel=2,
         )
