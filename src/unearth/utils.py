@@ -288,7 +288,7 @@ def get_netrc_auth(url: str) -> tuple[str, str] | None:
         from netrc import NetrcParseError, netrc
     except ImportError:
         return None
-    from httpx import URL
+    from httpx2 import URL
 
     hostname = URL(url).host
 

@@ -5,9 +5,9 @@ import mimetypes
 import os
 from typing import TYPE_CHECKING
 
-import httpx
-from httpx._config import DEFAULT_LIMITS
-from httpx._content import IteratorByteStream
+import httpx2
+from httpx2._config import DEFAULT_LIMITS
+from httpx2._content import IteratorByteStream
 
 from unearth.link import Link
 from unearth.utils import parse_netloc
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from contextlib import AbstractContextManager
     from typing import Any
 
-    from httpx._types import CertTypes, TimeoutTypes
+    from httpx2._types import CertTypes, TimeoutTypes
 
     VerifyTypes = ssl.SSLContext | bool | str
 
@@ -27,8 +27,8 @@ def is_absolute_url(self) -> bool:
     return self._uri_reference.scheme or self._uri_reference.host
 
 
-# Patch the is_absolute_url method of httpx.URL to allow file:// URLs
-httpx.URL.is_absolute_url = property(is_absolute_url)
+# Patch the is_absolute_url method of httpx2.URL to allow file:// URLs
+httpx2.URL.is_absolute_url = property(is_absolute_url)
 
 
 class FileByteStream(IteratorByteStream):
@@ -36,19 +36,19 @@ class FileByteStream(IteratorByteStream):
         self._stream.close()  # type: ignore[attr-defined]
 
 
-class LocalFSTransport(httpx.BaseTransport):
-    def handle_request(self, request: httpx.Request) -> httpx.Response:
+class LocalFSTransport(httpx2.BaseTransport):
+    def handle_request(self, request: httpx2.Request) -> httpx2.Response:
         link = Link(str(request.url))
         path = link.file_path
         if request.method != "GET":
-            return httpx.Response(status_code=405)
+            return httpx2.Response(status_code=405)
 
         try:
             stats = os.stat(path)
         except OSError as exc:
             # format the exception raised as a io.BytesIO object,
             # to return a better error message:
-            return httpx.Response(status_code=404, text=f"{type(exc).__name__}: {exc}")
+            return httpx2.Response(status_code=404, text=f"{type(exc).__name__}: {exc}")
         else:
             modified = email.utils.formatdate(stats.st_mtime, usegmt=True)
             content_type = mimetypes.guess_type(path)[0] or "text/plain"
@@ -57,20 +57,20 @@ class LocalFSTransport(httpx.BaseTransport):
                 "Content-Length": str(stats.st_size),
                 "Last-Modified": modified,
             }
-            return httpx.Response(
+            return httpx2.Response(
                 status_code=200,
                 headers=headers,
                 stream=FileByteStream(path.open("rb")),
             )
 
 
-class PyPIClient(httpx.Client):
+class PyPIClient(httpx2.Client):
     """
-    A :class:`httpx.Client` subclass that supports file:// URLs and trusted hosts configuration.
+    A :class:`httpx2.Client` subclass that supports file:// URLs and trusted hosts configuration.
 
     Args:
         trusted_hosts: A list of trusted hosts. If a host is trusted, the client will not verify the SSL certificate.
-        \\**kwargs: Additional keyword arguments to pass to the :class:`httpx.Client` constructor.
+        \\**kwargs: Additional keyword arguments to pass to the :class:`httpx2.Client` constructor.
     """
 
     def __init__(
@@ -81,14 +81,14 @@ class PyPIClient(httpx.Client):
         cert: CertTypes | None = None,
         http1: bool = True,
         http2: bool = False,
-        limits: httpx.Limits = DEFAULT_LIMITS,
+        limits: httpx2.Limits = DEFAULT_LIMITS,
         trust_env: bool = True,
         timeout: TimeoutTypes = 10.0,
         **kwargs: Any,
     ) -> None:
         self._trusted_host_ports: set[tuple[str, int | None]] = set()
-        # Due to lack of ability of retry behavior in httpx, we don't support it for simplicity
-        insecure_transport = httpx.HTTPTransport(
+        # Due to lack of ability of retry behavior in httpx2, we don't support it for simplicity
+        insecure_transport = httpx2.HTTPTransport(
             verify=False,
             cert=cert,
             http1=http1,
@@ -97,7 +97,7 @@ class PyPIClient(httpx.Client):
             trust_env=trust_env,
         )
 
-        mounts: dict[str, httpx.BaseTransport] = {"file://": LocalFSTransport()}
+        mounts: dict[str, httpx2.BaseTransport] = {"file://": LocalFSTransport()}
         for host in trusted_hosts:
             hostname, port = parse_netloc(host)
             self._trusted_host_ports.add((hostname, port))
@@ -119,7 +119,7 @@ class PyPIClient(httpx.Client):
 
     def get_stream(
         self, url: str, *, headers: Mapping[str, str] | None = None
-    ) -> AbstractContextManager[httpx.Response]:
+    ) -> AbstractContextManager[httpx2.Response]:
         return self.stream("GET", url, headers=headers)
 
     def iter_secure_origins(self) -> Iterable[tuple[str, str, str]]:

@@ -9,7 +9,7 @@ import subprocess
 from typing import TYPE_CHECKING, Literal, Optional, cast
 from urllib.parse import SplitResult, urlparse, urlsplit
 
-from httpx import URL, Auth, BasicAuth
+from httpx2 import URL, Auth, BasicAuth
 
 from unearth.utils import commonprefix, get_netrc_auth, split_auth_from_url
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
     from typing import Any, Callable
 
-    from httpx import Request, Response
+    from httpx2 import Request, Response
     from requests import Response as RequestsResponse
     from requests.models import PreparedRequest
 
@@ -188,7 +188,7 @@ def get_keyring_auth(url: str | None, username: str | None) -> AuthInfo | None:
 
 
 class MultiDomainBasicAuth(Auth):
-    """A multi-domain HTTP basic authentication handler supporting both requests and httpx"""
+    """A multi-domain HTTP basic authentication handler supporting both requests and httpx2"""
 
     def __init__(self, prompting: bool = True, index_urls: Iterable[str] = ()) -> None:
         self.prompting = prompting

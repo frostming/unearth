@@ -17,7 +17,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, cast
 
-import httpx
+import httpx2
 
 from unearth.errors import HashMismatchError, UnpackError
 from unearth.fetchers import Fetcher
@@ -33,7 +33,7 @@ from unearth.utils import (
 )
 from unearth.vcs import vcs_support
 
-HTTPErrors: tuple[type[Exception], ...] = (httpx.HTTPError,)
+HTTPErrors: tuple[type[Exception], ...] = (httpx2.HTTPError,)
 try:
     from requests import HTTPError
 
