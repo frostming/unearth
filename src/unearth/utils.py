@@ -9,9 +9,9 @@ import os
 import re
 import sys
 import warnings
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from pathlib import Path
-from typing import Callable, TypeVar
+from typing import TypeVar
 from urllib import parse
 from urllib.request import url2pathname
 

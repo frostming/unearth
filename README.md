@@ -27,7 +27,7 @@ Unearth serves as a stable replacement for pip's `PackageFinder` API. It will fo
 
 ## Requirements
 
-unearth requires Python >=3.8
+unearth requires Python >=3.10
 
 ## Installation
 
