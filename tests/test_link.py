@@ -108,6 +108,25 @@ def test_link_filename_and_hash():
 
 
 @pytest.mark.parametrize(
+    "url,filename",
+    [
+        (
+            "https://example.org/files/user@example/demo-1.0-py3-none-any.whl",
+            "demo-1.0-py3-none-any.whl",
+        ),
+        (
+            "https://example.org/files/user%40example/demo-1.0-py3-none-any.whl",
+            "demo-1.0-py3-none-any.whl",
+        ),
+        ("file:///packages/user@example/demo-1.0.tar.gz", "demo-1.0.tar.gz"),
+        ("git+https://example.org/demo.git@main", "demo.git"),
+    ],
+)
+def test_link_filename_at_sign(url, filename):
+    assert Link(url).filename == filename
+
+
+@pytest.mark.parametrize(
     "url,splitted,redacted",
     (
         [

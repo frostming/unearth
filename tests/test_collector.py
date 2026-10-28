@@ -1,7 +1,26 @@
 import pytest
 
+from unearth import PackageFinder
 from unearth.collector import collect_links_from_location
 from unearth.link import Link
+
+
+def test_package_in_directory_with_at_sign(pypi, pypi_session):
+    @pypi.route("/simple/path-demo/")
+    def index():
+        return (
+            '<a href="/files/user@example/path_demo-1.0-py3-none-any.whl">1.0</a>',
+            200,
+            {"Content-Type": "text/html"},
+        )
+
+    finder = PackageFinder(
+        session=pypi_session, index_urls=["https://test.pypi.org/simple/"]
+    )
+    best = finder.find_best_match("path-demo").best
+    assert best is not None
+    assert best.version == "1.0"
+    assert best.link.is_wheel
 
 
 def test_collector_skip_insecure_hosts(pypi_session, caplog):

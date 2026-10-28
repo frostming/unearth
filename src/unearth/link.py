@@ -102,7 +102,9 @@ class Link:
 
     @property
     def filename(self) -> str:
-        path = self.parsed.path.rsplit("@", 1)[0]
+        path = self.parsed.path
+        if self.is_vcs:
+            path = path.rsplit("@", 1)[0]
         return os.path.basename(unquote(path))
 
     @property
