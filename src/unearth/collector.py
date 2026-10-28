@@ -132,7 +132,8 @@ def parse_json_response(page: IndexPage) -> Iterable[Link]:
         requires_python: str | None = file.get("requires-python")
         yank_reason: str | None = file.get("yanked") or None
         dist_info_metadata: bool | dict[str, str] | None = file.get(
-            "core-metadata", file.get("data-dist-info-metadata")
+            "core-metadata",
+            file.get("dist-info-metadata", file.get("data-dist-info-metadata")),
         )
         hashes: dict[str, str] | None = file.get("hashes")
         yield Link(

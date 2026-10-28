@@ -1,5 +1,8 @@
+import json
+
 import pytest
 
+from unearth import PackageFinder
 from unearth.collector import collect_links_from_location
 from unearth.link import Link
 
@@ -77,3 +80,92 @@ def test_collect_links_from_local_dir_expand(pypi_session, fixtures_dir):
         "first-2.0.3-py2.py3-none-any.whl",
         "first-2.0.3.tar.gz",
     ]
+
+
+@pytest.mark.parametrize(
+    "fields, expected",
+    [
+        pytest.param({"dist-info-metadata": True}, True, id="legacy-true"),
+        pytest.param(
+            {"dist-info-metadata": {"sha256": "a" * 64}},
+            {"sha256": "a" * 64},
+            id="legacy-hash",
+        ),
+        pytest.param({"dist-info-metadata": False}, False, id="legacy-false"),
+        pytest.param({"core-metadata": True}, True, id="core-true"),
+        pytest.param(
+            {"core-metadata": {"sha256": "b" * 64}},
+            {"sha256": "b" * 64},
+            id="core-hash",
+        ),
+        pytest.param({"core-metadata": False}, False, id="core-false"),
+        pytest.param({"data-dist-info-metadata": True}, True, id="historical-true"),
+        pytest.param(
+            {"data-dist-info-metadata": {"sha256": "c" * 64}},
+            {"sha256": "c" * 64},
+            id="historical-hash",
+        ),
+        pytest.param({}, None, id="absent"),
+        pytest.param(
+            {
+                "core-metadata": False,
+                "dist-info-metadata": True,
+                "data-dist-info-metadata": True,
+            },
+            False,
+            id="core-false-precedence",
+        ),
+        pytest.param(
+            {
+                "core-metadata": {"sha256": "a" * 64},
+                "dist-info-metadata": {"sha256": "b" * 64},
+                "data-dist-info-metadata": {"sha256": "c" * 64},
+            },
+            {"sha256": "a" * 64},
+            id="core-hash-precedence",
+        ),
+        pytest.param(
+            {"dist-info-metadata": False, "data-dist-info-metadata": True},
+            False,
+            id="legacy-false-precedence",
+        ),
+        pytest.param(
+            {
+                "dist-info-metadata": {"sha256": "a" * 64},
+                "data-dist-info-metadata": {"sha256": "b" * 64},
+            },
+            {"sha256": "a" * 64},
+            id="legacy-hash-precedence",
+        ),
+    ],
+)
+def test_json_metadata_fields(pypi, pypi_session, fields, expected):
+    @pypi.route("/simple/demo/")
+    def index():
+        return json.dumps(
+            {
+                "meta": {"api-version": "1.0"},
+                "name": "demo",
+                "files": [
+                    {
+                        "filename": "demo-1.0-py3-none-any.whl",
+                        "url": "/files/demo-1.0-py3-none-any.whl",
+                        "hashes": {},
+                        **fields,
+                    }
+                ],
+            }
+        ), {"Content-Type": "application/vnd.pypi.simple.v1+json"}
+
+    finder = PackageFinder(
+        session=pypi_session, index_urls=["https://test.pypi.org/simple/"]
+    )
+    package = finder.find_best_match("demo").best
+    assert package is not None
+    assert package.link.dist_info_metadata == expected
+    expected_url = (
+        "https://test.pypi.org/files/demo-1.0-py3-none-any.whl.metadata"
+        if expected
+        else None
+    )
+    assert package.as_json()["link"]["metadata"] == expected_url
