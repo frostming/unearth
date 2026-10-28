@@ -101,6 +101,8 @@ def parse_html_page(page: IndexPage) -> Iterable[Link]:
         url = parse.urljoin(base_url, href)
         requires_python = anchor.get("data-requires-python")
         yank_reason = anchor.get("data-yanked")
+        if "data-yanked" in anchor and yank_reason is None:
+            yank_reason = ""
         metadata_hash = anchor.get(
             "data-core-metadata", anchor.get("data-dist-info-metadata")
         )

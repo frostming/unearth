@@ -1,7 +1,37 @@
 import pytest
 
+from unearth import PackageFinder
 from unearth.collector import collect_links_from_location
 from unearth.link import Link
+
+
+@pytest.mark.parametrize(
+    "attribute,version,reason",
+    [
+        ("", "2.0", None),
+        ("data-yanked", "1.0", ""),
+        ('data-yanked=""', "1.0", ""),
+        ('data-yanked="broken release"', "1.0", "broken release"),
+    ],
+)
+def test_yanked_attribute_presence_controls_package_selection(
+    pypi, pypi_session, attribute, version, reason
+):
+    @pypi.route("/simple/yank-demo/")
+    def index():
+        body = (
+            '<a href="/files/yank_demo-1.0-py3-none-any.whl">1.0</a>'
+            f'<a href="/files/yank_demo-2.0-py3-none-any.whl" {attribute}>2.0</a>'
+        )
+        return body, 200, {"Content-Type": "text/html"}
+
+    finder = PackageFinder(
+        session=pypi_session, index_urls=["https://test.pypi.org/simple/"]
+    )
+    assert finder.find_best_match("yank-demo").best.version == version
+    pinned = finder.find_best_match("yank-demo==2.0").best
+    assert pinned.version == "2.0"
+    assert pinned.link.yank_reason == reason
 
 
 def test_collector_skip_insecure_hosts(pypi_session, caplog):
